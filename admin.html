@@ -426,12 +426,16 @@
 
         const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', currentRound.round_id).eq('status', 'Active');
         
-        let userNotifs = []; // อาเรย์สำหรับเก็บข้อความรายบุคคลส่งให้ลูกค้า
+        let targetUids = new Set(); // เก็บ UID ของคนที่เล่นรอบนี้แบบส่วนตัว
+        let winCount = 0;
 
         if (bets && bets.length > 0) {
           for (let bet of bets) {
+            // ดึง UID ของคนที่เล่นส่วนตัวมาเตรียมส่งแจ้งเตือน
+            if (bet.play_mode === 'private') { targetUids.add(bet.uid); }
+
             if (bet.bet_type === result) {
-              // ชนะ
+              winCount++;
               let profit = bet.amount * (1 - margin);
               let payoutAmount = bet.amount + profit;
               await _supabase.from('bets').update({ status: 'Win', payout: payoutAmount }).eq('bet_id', bet.bet_id);
@@ -443,26 +447,24 @@
                 const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single();
                 if(uData) await _supabase.from('users').update({ credit_balance: uData.credit_balance + payoutAmount }).eq('uid', bet.uid);
               }
-
-              // เพิ่มข้อความคนชนะลงในอาเรย์
-              userNotifs.push({ uid: bet.uid, message: `🎉 ยินดีด้วย! คุณแทงถูกรอบ ${currentRound.round_id}\nผล: ${result} (${weight} กรัม)\nรับเงิน: ฿${payoutAmount.toLocaleString()}` });
-
-            } else { 
-              // แพ้
-              await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); 
-              
-              // เพิ่มข้อความคนแพ้ลงในอาเรย์
-              userNotifs.push({ uid: bet.uid, message: `😢 เสียใจด้วย! คุณแทงผิดรอบ ${currentRound.round_id}\nผล: ${result} (${weight} กรัม)` });
-            }
+            } else { await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); }
           }
         }
         await _supabase.from('rounds').update({ status: 'Ended', weight: weight, result: result }).eq('round_id', currentRound.round_id);
         
+        // 🚀 ยิงข้อมูลไปหา GAS ให้ส่ง Flex Message
+        if(targetUids.size > 0) {
+           notifyGAS('notifyUsersResult', { 
+               roundId: currentRound.round_id, 
+               weight: weight, 
+               result: result, 
+               winCount: winCount,
+               targetUids: Array.from(targetUids) 
+           });
+        }
+
         // ส่ง LINE แจ้งเข้ากลุ่มแอดมิน
-        notifyGAS('notifyGroup', { message: `⚖️ ประกาศผลรอบ ${currentRound.round_id}!\nน้ำหนัก: ${weight} กรัม\n👉 ผลคือ: ${result} 👈\nระบบจ่ายเงินเข้าเครดิตผู้ชนะเรียบร้อยแล้ว` });
-        
-        // ส่ง LINE แจ้งรายบุคคลให้ลูกค้าที่เล่น
-        if (userNotifs.length > 0) notifyGAS('notifyUsers', { users: userNotifs });
+        notifyGAS('notifyGroup', { message: `⚖️ ประกาศผลรอบ ${currentRound.round_id}!\nน้ำหนัก: ${weight} กรัม\n👉 ผลคือ: ${result} 👈\nระบบจ่ายเงินเข้าเครดิตเรียบร้อยแล้ว` });
 
         alert(`ตัดผลสำเร็จ! ผลคือ: ${result}`);
         document.getElementById('txtShrimpWeight').value = '';
