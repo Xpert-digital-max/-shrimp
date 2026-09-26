@@ -1,5 +1,5 @@
 const APP_CONFIG = {
-  GAS_URL: "https://script.google.com/macros/s/AKfycbwEM9m2tzp8YW1JGXZlvTB8weM_BoNTE9XjGybUMEC7QjJwx-zQfkMcVkVKHoQWU2o8/exec", // ใส่ลิงก์ Deploy ของคุณ
+  GAS_URL: "https://script.google.com/macros/s/AKfycbz6R8nNRUaXj-aOgvG8W2db9ZhaKildpKhSETNLIsZqSH8xTRzo87TZL26M1Wi6aFT6/exec", // ใส่ลิงก์ Deploy ของคุณ
   
   // ต้องมีบรรทัดนี้! หน้าผู้เล่นถึงจะทำงานได้
   LIFF_ID_PLAYER: "2009043114-xI8nWTT5", 
