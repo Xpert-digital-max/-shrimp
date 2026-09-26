@@ -156,14 +156,12 @@
         </select>
       </div>
 
-      <!-- ส่วนตัวเลือกค่าน้ำ -->
       <div style="margin-bottom: 20px; display: none;" id="withdrawOptionsSection">
         <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">เงื่อนไขการถอน</label>
         <select id="selWithdrawFee" style="width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: white; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; outline: none;">
           <option value="หักค่าน้ำ">ถอนแบบปกติ (หักค่าน้ำตามระบบ)</option>
           <option value="ไม่หักค่าน้ำ">ถอนเต็มจำนวน (ไม่หักค่าน้ำ)</option>
         </select>
-        <small style="color: var(--yellow-text); display: block; margin-top: 8px;">*แอดมินจะพิจารณาเงื่อนไขการถอนตามความเหมาะสม</small>
       </div>
 
       <div style="display: flex; gap: 10px;">
@@ -174,8 +172,6 @@
   </div>
 
   <div class="container">
-    
-    <!-- Header: ข้อมูลผู้เล่นและรูปโปรไฟล์ -->
     <div class="header-card">
       <div class="header-box" style="display: flex; align-items: center; gap: 12px; padding: 8px 15px;">
         <img id="profileImage" src="https://via.placeholder.com/150/1c1e2b/ffffff?text=U" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--blue-main); object-fit: cover;">
@@ -193,7 +189,7 @@
       </div>
     </div>
 
-    <!-- VIEW: รออนุมัติสิทธิ์ (Pending View) -->
+    <!-- รออนุมัติสิทธิ์ -->
     <div id="pendingView" class="hidden" style="text-align: center; padding: 60px 20px; background: var(--card-bg); border-radius: 16px; border: 1px solid var(--card-border);">
       <i class="fa-solid fa-lock" style="font-size: 4rem; color: var(--text-muted); margin-bottom: 20px;"></i>
       <h2 style="margin: 0; color: var(--text-main);">รอการอนุมัติสิทธิ์</h2>
@@ -203,15 +199,13 @@
       </div>
     </div>
 
-    <!-- VIEW 1: หน้าสำหรับแทง (Betting View) -->
+    <!-- หน้าแทง -->
     <div id="bettingView" class="hidden">
-      
       <div class="mode-selector">
         <div class="mode-btn" id="modeTable" onclick="setMode('table')">เล่นแบบลงโต๊ะ</div>
         <div class="mode-btn active" id="modePrivate" onclick="setMode('private')">เล่นส่วนตัว</div>
       </div>
 
-      <!-- Round Info & Live Board Summary -->
       <div class="round-info">
         <div class="round-header">
           <div>
@@ -245,7 +239,6 @@
         </div>
       </div>
 
-      <!-- ปุ่มกดแทง -->
       <div class="bet-grid">
         <div class="bet-btn even" id="btnEven" onclick="selectBet('คู่')">
           <div class="thai-text">คู่</div>
@@ -264,7 +257,6 @@
 
       <button class="btn-submit" onclick="submitBet()">ยืนยันการแทง</button>
 
-      <!-- ผลรอบก่อนหน้า -->
       <div class="prev-result">
         <div class="prev-result-left">
           <i class="fa-solid fa-scale-balanced"></i>
@@ -277,7 +269,7 @@
       </div>
     </div>
     
-    <!-- VIEW 2: หน้าประวัติ (History View) -->
+    <!-- หน้าประวัติ -->
     <div id="historyView" class="hidden">
       <h3 style="margin-top:0; color: var(--text-main);">ประวัติการเล่น (20 บิลล่าสุด)</h3>
       <div id="historyList">
@@ -286,27 +278,23 @@
         </div>
       </div>
     </div>
-
   </div>
 
   <!-- Bottom Navigation -->
   <div class="bottom-nav" id="bottomNavMenu" style="display: none;">
     <div class="nav-item active" onclick="switchTab('bet')">
-      <i class="fa-solid fa-bullseye"></i>
-      <span>แทง</span>
+      <i class="fa-solid fa-bullseye"></i><span>แทง</span>
     </div>
     <div class="nav-item" onclick="alert('ผลรอบล่าสุดจะแสดงในหน้าแทงครับ')">
-      <i class="fa-solid fa-receipt"></i>
-      <span>ผลรอบ</span>
+      <i class="fa-solid fa-receipt"></i><span>ผลรอบ</span>
     </div>
     <div class="nav-item" onclick="switchTab('history')">
-      <i class="fa-solid fa-clock-rotate-left"></i>
-      <span>ประวัติ</span>
+      <i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติ</span>
     </div>
   </div>
 
   <script>
-    // ประกาศตัวเชื่อมต่อ Supabase ไว้ใช้งาน
+    // ตัวแปรเชื่อมต่อ Supabase
     const supabaseUrl = APP_CONFIG.SUPABASE_URL;
     const supabaseKey = APP_CONFIG.SUPABASE_ANON_KEY;
     const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
@@ -316,99 +304,87 @@
     let selectedBetType = "";
     let playMode = "private"; 
     let userTableNo = ""; 
-    
     let currentUserStatus = "Inactive";
     let memberId = "";
-    
     let targetEndTimeMs = null; 
     let timerInterval = null;
 
     async function initializeApp() {
       const urlParams = new URLSearchParams(window.location.search);
-      if(urlParams.get('table')) {
-        userTableNo = urlParams.get('table');
-      }
+      if(urlParams.get('table')) { userTableNo = urlParams.get('table'); }
 
       try {
-        // ใช้ LIFF ID สำหรับผู้เล่นจาก config.js ที่ถูกต้อง
-        await liff.init({ liffId: APP_CONFIG.LIFF_ID });
+        await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER });
         if (!liff.isLoggedIn()) {
           liff.login();
         } else {
           const profile = await liff.getProfile();
           currentLineUserId = profile.userId;
           currentDisplayName = profile.displayName;
-          
-          if(profile.pictureUrl) {
-            document.getElementById('profileImage').src = profile.pictureUrl;
-          }
-
+          if(profile.pictureUrl) { document.getElementById('profileImage').src = profile.pictureUrl; }
           await authenticateUser(profile);
         }
       } catch (err) {
-        console.error("LIFF Error:", err);
         alert("เกิดข้อผิดพลาดในการโหลด LINE LIFF: " + err.message);
       }
-      
       startCountdownTimer();
     }
 
     async function authenticateUser(profile) {
-      const payload = {
-        action: 'loginUser',
-        uid: profile.userId,
-        displayName: profile.displayName,
-        pictureUrl: profile.pictureUrl || ''
-      };
-
       try {
-        const response = await fetch(APP_CONFIG.GAS_URL, {
-          method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const res = await response.json();
+        // ดึงข้อมูล User จาก Supabase โดยตรง (ไวมากๆ)
+        const { data: user, error } = await _supabase.from('users').select('*').eq('uid', profile.userId).single();
         
-        if (res.status === 'success') {
-          
-          // ==========================================
-          // ระบบ Redirect อัตโนมัติ (บังคับเปลี่ยนหน้า)
-          // ==========================================
-          let userRole = res.role ? res.role.trim() : 'Customer';
-          
-          if (userRole === 'Superadmin' || userRole === 'Admin' || userRole === 'Operator') {
-             document.getElementById('tableDisplay').innerText = "กำลังเข้าสู่หน้าแอดมิน...";
-             window.location.href = "admin.html";
-             setTimeout(() => { window.location.assign("admin.html"); }, 800);
-             return; 
-          }
-
-          // สำหรับ Customer ให้ทำงานต่อตามปกติ
-          memberId = res.memberId;
-          currentUserStatus = res.userStatus; 
-          
-          document.getElementById('memberIdDisplay').innerText = memberId;
-          document.getElementById('pendingMemberId').innerText = memberId;
-          document.getElementById('tableDisplay').innerText = currentDisplayName || "บัญชีส่วนตัว";
-          document.getElementById('creditDisplay').innerText = `฿${res.credit.toLocaleString()}`;
-
-          if (currentUserStatus === 'Active') {
-            document.getElementById('bettingView').classList.remove('hidden');
-            document.getElementById('pendingView').classList.add('hidden');
-            document.getElementById('bottomNavMenu').style.display = 'flex'; 
-            
-            fetchDashboard();
-            setInterval(fetchDashboard, 3000);
-          } else {
-            document.getElementById('bettingView').classList.add('hidden');
-            document.getElementById('historyView').classList.add('hidden');
-            document.getElementById('pendingView').classList.remove('hidden');
-            document.getElementById('bottomNavMenu').style.display = 'none'; 
-          }
+        let currentUser = user;
+        // ถ้าไม่เคยมีบัญชี ให้สร้างใหม่เลย
+        if (!user) {
+          currentUser = {
+            uid: profile.userId,
+            member_id: 'M' + Math.floor(100000 + Math.random() * 900000),
+            display_name: profile.displayName,
+            profile_pic: profile.pictureUrl || '',
+            credit_balance: 0,
+            role: 'Customer',
+            status: 'Inactive'
+          };
+          await _supabase.from('users').insert([currentUser]);
         } else {
-          alert("แจ้งเตือนจากระบบหลังบ้าน: " + res.message);
-          document.getElementById('tableDisplay').innerText = "โหลดข้อมูลไม่สำเร็จ";
+          // ถ้ามีบัญชีแล้ว แค่อัปเดตชื่อ/รูปให้ตรงกับ LINE ปัจจุบัน
+          await _supabase.from('users').update({ display_name: profile.displayName, profile_pic: profile.pictureUrl || '' }).eq('uid', profile.userId);
+        }
+
+        let userRole = currentUser.role ? currentUser.role.trim() : 'Customer';
+        
+        if (userRole === 'Superadmin' || userRole === 'Admin' || userRole === 'Operator') {
+           document.getElementById('tableDisplay').innerText = "กำลังเข้าสู่หน้าแอดมิน...";
+           window.location.href = "admin.html";
+           setTimeout(() => { window.location.assign("admin.html"); }, 800);
+           return; 
+        }
+
+        memberId = currentUser.member_id;
+        currentUserStatus = currentUser.status; 
+        
+        document.getElementById('memberIdDisplay').innerText = memberId;
+        document.getElementById('pendingMemberId').innerText = memberId;
+        document.getElementById('tableDisplay').innerText = currentDisplayName || "บัญชีส่วนตัว";
+        document.getElementById('creditDisplay').innerText = `฿${currentUser.credit_balance.toLocaleString()}`;
+
+        if (currentUserStatus === 'Active') {
+          document.getElementById('bettingView').classList.remove('hidden');
+          document.getElementById('pendingView').classList.add('hidden');
+          document.getElementById('bottomNavMenu').style.display = 'flex'; 
+          
+          fetchDashboard();
+          setInterval(fetchDashboard, 3000); // อัปเดตบอร์ดสดทุก 3 วินาที
+        } else {
+          document.getElementById('bettingView').classList.add('hidden');
+          document.getElementById('historyView').classList.add('hidden');
+          document.getElementById('pendingView').classList.remove('hidden');
+          document.getElementById('bottomNavMenu').style.display = 'none'; 
         }
       } catch (error) {
-        alert("Error การเชื่อมต่อ: ไม่สามารถติดต่อฐานข้อมูลได้ โปรดเช็คการตั้งค่า Deploy ของคุณ");
+        alert("Error ฐานข้อมูล: ไม่สามารถติดต่อ Supabase ได้ " + error.message);
         document.getElementById('tableDisplay').innerText = "เชื่อมต่อล้มเหลว";
       }
     }
@@ -417,7 +393,6 @@
       playMode = mode;
       document.getElementById('modeTable').classList.remove('active');
       document.getElementById('modePrivate').classList.remove('active');
-      
       if(mode === 'table') {
         document.getElementById('modeTable').classList.add('active');
         document.getElementById('tableDisplay').innerText = userTableNo ? `โต๊ะ ${userTableNo}` : "ไม่มีเบอร์โต๊ะ (โปรดสแกน QR)";
@@ -425,25 +400,20 @@
         document.getElementById('modePrivate').classList.add('active');
         document.getElementById('tableDisplay').innerText = currentDisplayName || "บัญชีส่วนตัว";
       }
-      
       fetchDashboard();
-      if(!document.getElementById('historyView').classList.contains('hidden')) {
-        loadHistory();
-      }
+      if(!document.getElementById('historyView').classList.contains('hidden')) { loadHistory(); }
     }
 
     function selectBet(type) {
       selectedBetType = type;
       document.getElementById('btnEven').classList.remove('selected');
       document.getElementById('btnOdd').classList.remove('selected');
-      
       if(type === 'คู่') document.getElementById('btnEven').classList.add('selected');
       if(type === 'คี่') document.getElementById('btnOdd').classList.add('selected');
     }
 
     function switchTab(tab) {
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      
       if (tab === 'bet') {
         document.getElementById('bettingView').classList.remove('hidden');
         document.getElementById('historyView').classList.add('hidden');
@@ -461,16 +431,13 @@
       timerInterval = setInterval(() => {
         let display = document.getElementById('countdownTimer');
         let statusText = document.getElementById('statusDisplay').innerText;
-        
         if (statusText !== 'เปิดรับแทง' || !targetEndTimeMs) {
           display.innerText = "--:--";
           display.style.color = "var(--text-muted)";
           return;
         }
-
         let now = new Date().getTime();
         let distance = targetEndTimeMs - now;
-
         if (distance <= 0) {
           display.innerText = "00:00";
           display.style.color = "var(--red-main)";
@@ -485,60 +452,66 @@
 
     async function fetchDashboard() {
       if (currentUserStatus !== 'Active') return; 
-
       try {
-        const url = `${APP_CONFIG.GAS_URL}?action=getDashboard&uid=${currentLineUserId}&table=${userTableNo}`;
-        const response = await fetch(url);
-        const data = await response.json();
+        // อัปเดตเครดิตล่าสุด
+        const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', currentLineUserId).single();
+        if(uData) document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`;
+
+        // ดึงรอบล่าสุดจาก Supabase
+        const { data: rounds } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(2);
         
-        if(data && data.status !== 'error') {
-          document.getElementById('roundIdDisplay').innerHTML = `${data.roundId} <span class="live-badge">● LIVE</span>`;
-          document.getElementById('statusDisplay').innerText = data.status === 'Open' ? 'เปิดรับแทง' : 'ปิดรับแทง';
+        if (rounds && rounds.length > 0) {
+          const currentRound = rounds[0];
+          document.getElementById('roundIdDisplay').innerHTML = `${currentRound.round_id} <span class="live-badge">● LIVE</span>`;
+          document.getElementById('statusDisplay').innerText = currentRound.status === 'Open' ? 'เปิดรับแทง' : 'ปิดรับแทง';
+          targetEndTimeMs = currentRound.end_time_ms || 0;
+
+          // แสดงผลรอบก่อนหน้า
+          if(currentRound.status === 'Ended') {
+             document.getElementById('prevWeight').innerText = `${currentRound.weight} กรัม`;
+             document.getElementById('prevResultBadge').innerText = `${currentRound.result} ชนะ`;
+          } else if (rounds.length > 1 && rounds[1].status === 'Ended') {
+             document.getElementById('prevWeight').innerText = `${rounds[1].weight} กรัม`;
+             document.getElementById('prevResultBadge').innerText = `${rounds[1].result} ชนะ`;
+          } else {
+             document.getElementById('prevWeight').innerText = `รอข้อมูล...`;
+             document.getElementById('prevResultBadge').innerText = `-`;
+          }
+
+          // สรุปยอดแทงในรอบปัจจุบัน
+          const { data: bets } = await _supabase.from('bets').select('bet_type, amount, table_no').eq('round_id', currentRound.round_id).neq('status', 'Cancelled');
+          let evenAmt = 0, oddAmt = 0, totalAmt = 0;
+          let evenTables = new Set(), oddTables = new Set();
           
-          if (playMode === 'private') {
-            document.getElementById('creditDisplay').innerText = `฿${data.userCredit.toLocaleString()}`;
-          } else {
-            document.getElementById('creditDisplay').innerText = `฿${data.tableCredit.toLocaleString()}`;
+          if(bets) {
+            bets.forEach(b => {
+              totalAmt += Number(b.amount);
+              if(b.bet_type === 'คู่') { evenAmt += Number(b.amount); evenTables.add(b.table_no || '-'); }
+              if(b.bet_type === 'คี่') { oddAmt += Number(b.amount); oddTables.add(b.table_no || '-'); }
+            });
           }
 
-          if (data.liveSummary) {
-            let evenAmt = data.liveSummary.even || 0;
-            let oddAmt = data.liveSummary.odd || 0;
-            let totalAmt = data.liveSummary.total || 0;
-            
-            document.getElementById('liveEvenDisplay').innerText = `฿${evenAmt.toLocaleString()}`;
-            document.getElementById('liveOddDisplay').innerText = `฿${oddAmt.toLocaleString()}`;
-            document.getElementById('liveTotalDisplay').innerText = `฿${totalAmt.toLocaleString()}`;
-            
-            document.getElementById('countEvenDisplay').innerText = `${data.liveSummary.evenCount || 0} โต๊ะ/บิล`;
-            document.getElementById('countOddDisplay').innerText = `${data.liveSummary.oddCount || 0} โต๊ะ/บิล`;
+          document.getElementById('liveEvenDisplay').innerText = `฿${evenAmt.toLocaleString()}`;
+          document.getElementById('liveOddDisplay').innerText = `฿${oddAmt.toLocaleString()}`;
+          document.getElementById('liveTotalDisplay').innerText = `฿${totalAmt.toLocaleString()}`;
+          
+          document.getElementById('countEvenDisplay').innerText = `${evenTables.size} โต๊ะ/บิล`;
+          document.getElementById('countOddDisplay').innerText = `${oddTables.size} โต๊ะ/บิล`;
 
-            let evenPct = totalAmt > 0 ? (evenAmt / totalAmt) * 100 : 0;
-            let oddPct = totalAmt > 0 ? (oddAmt / totalAmt) * 100 : 0;
-            document.getElementById('barEven').style.width = `${evenPct}%`;
-            document.getElementById('barOdd').style.width = `${oddPct}%`;
-
-            targetEndTimeMs = data.liveSummary.endTimeMs;
-          }
-
-          if (data.weight && data.weight !== '-') {
-            document.getElementById('prevWeight').innerText = `${data.weight} กรัม`;
-            document.getElementById('prevResultBadge').innerText = `${data.result} ชนะ`;
-          } else {
-            document.getElementById('prevWeight').innerText = `รอข้อมูล...`;
-            document.getElementById('prevResultBadge').innerText = `-`;
-          }
+          let evenPct = totalAmt > 0 ? (evenAmt / totalAmt) * 100 : 0;
+          let oddPct = totalAmt > 0 ? (oddAmt / totalAmt) * 100 : 0;
+          document.getElementById('barEven').style.width = `${evenPct}%`;
+          document.getElementById('barOdd').style.width = `${oddPct}%`;
+        } else {
+          document.getElementById('roundIdDisplay').innerHTML = `ไม่มีรอบ <span class="live-badge" style="background:gray;color:white;">OFFLINE</span>`;
         }
-      } catch (error) {
-        console.error("Fetch Error:", error);
-      }
+      } catch (error) { console.error("Fetch Error:", error); }
     }
 
     async function submitBet() {
       const amount = document.getElementById('txtAmount').value;
       if(!selectedBetType) { alert("กรุณาเลือก คู่ หรือ คี่"); return; }
       if(!amount || amount <= 0) { alert("กรุณาระบุยอดแทง"); return; }
-      
       if(playMode === 'table' && !userTableNo) {
         alert("คุณยังไม่ได้สแกน QR Code ของโต๊ะ กรุณาเลือก 'เล่นส่วนตัว' หรือสแกน QR โต๊ะใหม่ครับ");
         return;
@@ -546,27 +519,40 @@
 
       document.querySelector('.btn-submit').innerText = "กำลังดำเนินการ...";
       
-      const payload = {
-        action: 'placeBet', uid: currentLineUserId, tableNo: userTableNo,
-        playMode: playMode, betType: selectedBetType, amount: parseFloat(amount)
-      };
-
       try {
-        const response = await fetch(APP_CONFIG.GAS_URL, {
-          method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const res = await response.json();
-        
-        if(res.status === 'success') {
-          document.getElementById('txtAmount').value = "";
-          selectBet(""); 
-          document.getElementById('creditDisplay').innerText = `฿${res.newBalance.toLocaleString()}`;
-          alert("รับยอดสำเร็จ!");
-        } else {
-          alert(res.message);
-        }
+        // 1. เช็ครอบที่เปิดอยู่
+        const { data: round } = await _supabase.from('rounds').select('*').eq('status', 'Open').order('created_at', { ascending: false }).limit(1).single();
+        if(!round) throw new Error("ไม่มีรอบที่เปิดรับแทงขณะนี้");
+
+        // 2. เช็คเครดิตลูกค้า
+        const { data: user } = await _supabase.from('users').select('credit_balance').eq('uid', currentLineUserId).single();
+        if(!user || user.credit_balance < amount) throw new Error("เครดิตไม่พอ กรุณาเติมเงิน");
+
+        // 3. หักเครดิต
+        const newBalance = user.credit_balance - amount;
+        await _supabase.from('users').update({ credit_balance: newBalance }).eq('uid', currentLineUserId);
+
+        // 4. บันทึกบิลแทง
+        const newBet = {
+          bet_id: 'B' + Date.now() + Math.floor(Math.random()*1000),
+          round_id: round.round_id,
+          uid: currentLineUserId,
+          table_no: playMode === 'table' ? userTableNo : '-',
+          bet_type: selectedBetType,
+          amount: parseFloat(amount),
+          status: 'Active',
+          play_mode: playMode,
+          payout: 0
+        };
+        await _supabase.from('bets').insert([newBet]);
+
+        document.getElementById('txtAmount').value = "";
+        selectBet(""); 
+        document.getElementById('creditDisplay').innerText = `฿${newBalance.toLocaleString()}`;
+        alert("รับยอดสำเร็จ!");
+
       } catch (error) {
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        alert('เกิดข้อผิดพลาด: ' + error.message);
       } finally {
         document.querySelector('.btn-submit').innerText = "ยืนยันการแทง";
         fetchDashboard();
@@ -578,69 +564,67 @@
       listDiv.innerHTML = '<div style="text-align:center; padding: 20px;">กำลังโหลด...</div>';
       
       try {
-        const url = `${APP_CONFIG.GAS_URL}?action=getHistory&uid=${currentLineUserId}&table=${userTableNo}&mode=${playMode}`;
-        const response = await fetch(url);
-        const res = await response.json();
+        const { data: bets } = await _supabase.from('bets')
+          .select('*')
+          .eq('uid', currentLineUserId)
+          .order('created_at', { ascending: false })
+          .limit(20);
         
-        if (res.status === 'success') {
-          listDiv.innerHTML = '';
-          if (res.data.length === 0) { listDiv.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 20px;">ยังไม่มีประวัติการแทง</div>'; return; }
+        listDiv.innerHTML = '';
+        if (!bets || bets.length === 0) { listDiv.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 20px;">ยังไม่มีประวัติการแทง</div>'; return; }
+        
+        bets.forEach(item => {
+          let typeClass = item.bet_type === 'คู่' ? 'even' : 'odd';
+          let statusHtml = ''; let cancelBtnHtml = '';
           
-          res.data.forEach(item => {
-            let typeClass = item.betType === 'คู่' ? 'even' : 'odd';
-            let statusHtml = ''; let cancelBtnHtml = '';
-            
-            if (item.status === 'Active') {
-              statusHtml = `<span class="badge-status st-active">รอผล</span>`;
-              cancelBtnHtml = `<button class="btn-cancel-bet" onclick="userCancelBet('${item.betId}')">ยกเลิกบิล</button>`;
-            } else if (item.status === 'Win') {
-              statusHtml = `<span class="badge-status st-win">+฿${item.payout.toLocaleString()}</span>`;
-            } else if (item.status === 'Lose') {
-              statusHtml = `<span class="badge-status st-lose">เสีย</span>`;
-            } else if (item.status === 'Cancelled') {
-              statusHtml = `<span class="badge-status st-cancel">ยกเลิกแล้ว</span>`;
-            }
+          if (item.status === 'Active') {
+            statusHtml = `<span class="badge-status st-active">รอผล</span>`;
+            cancelBtnHtml = `<button class="btn-cancel-bet" onclick="userCancelBet('${item.bet_id}', ${item.amount})">ยกเลิกบิล</button>`;
+          } else if (item.status === 'Win') {
+            statusHtml = `<span class="badge-status st-win">+฿${item.payout.toLocaleString()}</span>`;
+          } else if (item.status === 'Lose') {
+            statusHtml = `<span class="badge-status st-lose">เสีย</span>`;
+          } else if (item.status === 'Cancelled') {
+            statusHtml = `<span class="badge-status st-cancel">ยกเลิกแล้ว</span>`;
+          }
 
-            const card = document.createElement('div');
-            card.className = 'history-card';
-            card.innerHTML = `
-              <div class="hist-info">
-                <div class="hist-round">${item.roundId}</div>
-                <div class="hist-time">${item.time}</div>
-                <div class="hist-type ${typeClass}">${item.betType}</div>
-              </div>
-              <div class="hist-action">
-                <div class="hist-amt">฿${item.amount.toLocaleString()}</div>
-                <div style="margin-bottom: 5px;">${statusHtml}</div>
-                ${cancelBtnHtml}
-              </div>
-            `;
-            listDiv.appendChild(card);
-          });
-        }
+          let d = new Date(item.created_at);
+          let timeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+
+          const card = document.createElement('div');
+          card.className = 'history-card';
+          card.innerHTML = `
+            <div class="hist-info">
+              <div class="hist-round">${item.round_id}</div>
+              <div class="hist-time">${timeStr}</div>
+              <div class="hist-type ${typeClass}">${item.bet_type}</div>
+            </div>
+            <div class="hist-action">
+              <div class="hist-amt">฿${item.amount.toLocaleString()}</div>
+              <div style="margin-bottom: 5px;">${statusHtml}</div>
+              ${cancelBtnHtml}
+            </div>
+          `;
+          listDiv.appendChild(card);
+        });
       } catch (error) { listDiv.innerHTML = '<div style="color:red; text-align:center;">เกิดข้อผิดพลาดในการดึงข้อมูล</div>'; }
     }
 
-    async function userCancelBet(betId) {
+    async function userCancelBet(betId, amount) {
       if(!confirm("คุณต้องการยกเลิกบิลนี้ และรับเครดิตคืนใช่หรือไม่?")) return;
-      const payload = { action: 'cancelBet', betId: betId, uid: currentLineUserId };
       try {
-        const response = await fetch(APP_CONFIG.GAS_URL, {
-          method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const res = await response.json();
+        await _supabase.from('bets').update({ status: 'Cancelled' }).eq('bet_id', betId);
+        const { data: user } = await _supabase.from('users').select('credit_balance').eq('uid', currentLineUserId).single();
+        await _supabase.from('users').update({ credit_balance: user.credit_balance + amount }).eq('uid', currentLineUserId);
         
-        if(res.status === 'success') {
-          alert("ยกเลิกบิลและคืนเครดิตสำเร็จ"); loadHistory(); fetchDashboard(); 
-        } else { alert(res.message); }
-      } catch (error) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+        alert("ยกเลิกบิลและคืนเครดิตสำเร็จ"); 
+        loadHistory(); 
+        fetchDashboard(); 
+      } catch (error) { alert("เกิดข้อผิดพลาดในการยกเลิกบิล"); }
     }
 
     function openTopupModal() {
-      if (currentUserStatus !== 'Active') {
-        alert("บัญชีของคุณยังไม่พร้อมใช้งาน กรุณาแจ้งแอดมินเพื่อเปิดระบบครับ");
-        return;
-      }
+      if (currentUserStatus !== 'Active') { alert("บัญชีของคุณยังไม่พร้อมใช้งาน กรุณาแจ้งแอดมินเพื่อเปิดระบบครับ"); return; }
       document.getElementById('topupModal').classList.remove('hidden');
     }
     
@@ -651,13 +635,11 @@
 
     function toggleWithdrawOptions() {
       const type = document.getElementById('selTransactionType').value;
-      if (type === 'ถอนเงิน') {
-        document.getElementById('withdrawOptionsSection').style.display = 'block';
-      } else {
-        document.getElementById('withdrawOptionsSection').style.display = 'none';
-      }
+      if (type === 'ถอนเงิน') document.getElementById('withdrawOptionsSection').style.display = 'block';
+      else document.getElementById('withdrawOptionsSection').style.display = 'none';
     }
 
+    // การแจ้งเตือนแอดมินยังใช้ GAS เหมือนเดิม เพื่อส่ง LINE Notify
     async function submitTopupRequest() {
       const type = document.getElementById('selTransactionType').value;
       const amount = document.getElementById('txtTopupAmount').value;
@@ -682,7 +664,7 @@
           alert(`แจ้งเรื่อง ${type} สำเร็จ! แอดมินกำลังดำเนินการให้ครับ`);
           closeTopupModal();
         } else { alert("เกิดข้อผิดพลาด: " + res.message); }
-      } catch (error) { alert('เกิดข้อผิดพลาดในการเชื่อมต่อ'); }
+      } catch (error) { alert('เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อแจ้งเตือน'); }
     }
 
     initializeApp();
