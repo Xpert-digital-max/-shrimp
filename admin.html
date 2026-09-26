@@ -114,7 +114,6 @@
           </div>
         </div>
         
-        <!-- รายละเอียดรายการเล่นแต่ละรอบ (ย่อให้สั้นลง มี Scrollbar) -->
         <div id="roundReportList" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
           <div style="text-align: center; color: var(--text-muted); padding: 15px;">เลือกวันที่แล้วกดดูรายงาน</div>
         </div>
@@ -127,7 +126,6 @@
           <input type="text" id="txtNewTable" class="form-control" placeholder="ระบุเบอร์โต๊ะใหม่ (เช่น 8)" style="flex: 2;">
           <button class="btn btn-green" id="btnAddTable" style="flex: 1;" onclick="addNewTable()"><i class="fa-solid fa-plus"></i> เพิ่มโต๊ะ</button>
         </div>
-        <!-- Scrollbar ให้รายการโต๊ะ -->
         <div id="tableListContainer" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
           <div style="text-align: center; color: var(--text-muted); padding: 15px;">กำลังโหลดข้อมูล...</div>
         </div>
@@ -199,6 +197,18 @@
     let currentOpId = ""; 
     let creditMode = "table";
     let currentUserRole = "Customer";
+
+    // ฟังก์ชันพิเศษสำหรับส่งข้อมูลให้ GAS ยิง LINE Notify
+    async function notifyGAS(action, payloadData) {
+      try {
+        const payload = { action: action, ...payloadData };
+        fetch(APP_CONFIG.GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+      } catch (e) { console.error(e); }
+    }
 
     async function initializeApp() {
       let today = new Date().toISOString().split('T')[0];
@@ -348,7 +358,7 @@
     }
 
     // ==========================================
-    // ระบบเปิดรอบ (นับลำดับ 1, 2, 3... ในแต่ละวัน)
+    // ระบบเปิดรอบ
     // ==========================================
     async function controlRound(actionCmd) {
       if (actionCmd === 'createRound') {
@@ -375,6 +385,10 @@
           
           const { error } = await _supabase.from('rounds').insert([{ round_id: rndName, status: 'Open', end_time_ms: endTime }]);
           if(error) throw error;
+          
+          // สั่ง GAS ให้ยิงข้อความเข้ากลุ่ม LINE
+          notifyGAS('notifyGroup', { message: `📢 เปิดรับแทงแล้ว!\nรอบ: ${rndName}\nหมดเวลาในอีก ${duration} นาที` });
+
           alert(`เปิดรอบ ${rndName} สำเร็จ!`);
         } catch(e) { alert(e.message); }
         document.getElementById('btnOpenRound').innerHTML = '<i class="fa-solid fa-play"></i> 1. เปิดรอบใหม่';
@@ -385,6 +399,10 @@
           const { data: lastRound } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1).single();
           if (lastRound && lastRound.status === 'Open') {
              await _supabase.from('rounds').update({ status: 'Closed' }).eq('round_id', lastRound.round_id);
+             
+             // สั่ง GAS ให้ยิงข้อความเข้ากลุ่ม LINE
+             notifyGAS('notifyGroup', { message: `⏳ ปิดรับแทง!\nรอบ: ${lastRound.round_id}\nรอแอดมินชั่งกุ้งและประกาศผลครับ` });
+             
              alert("ปิดรับแทงแล้ว!");
           } else { alert("ไม่มีรอบที่กำลังเปิดรับแทง"); }
         } catch(e) { alert("ผิดพลาด"); }
@@ -407,9 +425,13 @@
         const margin = set ? set.water_margin : 0.05;
 
         const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', currentRound.round_id).eq('status', 'Active');
+        
+        let userNotifs = []; // อาเรย์สำหรับเก็บข้อความรายบุคคลส่งให้ลูกค้า
+
         if (bets && bets.length > 0) {
           for (let bet of bets) {
             if (bet.bet_type === result) {
+              // ชนะ
               let profit = bet.amount * (1 - margin);
               let payoutAmount = bet.amount + profit;
               await _supabase.from('bets').update({ status: 'Win', payout: payoutAmount }).eq('bet_id', bet.bet_id);
@@ -421,10 +443,27 @@
                 const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single();
                 if(uData) await _supabase.from('users').update({ credit_balance: uData.credit_balance + payoutAmount }).eq('uid', bet.uid);
               }
-            } else { await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); }
+
+              // เพิ่มข้อความคนชนะลงในอาเรย์
+              userNotifs.push({ uid: bet.uid, message: `🎉 ยินดีด้วย! คุณแทงถูกรอบ ${currentRound.round_id}\nผล: ${result} (${weight} กรัม)\nรับเงิน: ฿${payoutAmount.toLocaleString()}` });
+
+            } else { 
+              // แพ้
+              await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); 
+              
+              // เพิ่มข้อความคนแพ้ลงในอาเรย์
+              userNotifs.push({ uid: bet.uid, message: `😢 เสียใจด้วย! คุณแทงผิดรอบ ${currentRound.round_id}\nผล: ${result} (${weight} กรัม)` });
+            }
           }
         }
         await _supabase.from('rounds').update({ status: 'Ended', weight: weight, result: result }).eq('round_id', currentRound.round_id);
+        
+        // ส่ง LINE แจ้งเข้ากลุ่มแอดมิน
+        notifyGAS('notifyGroup', { message: `⚖️ ประกาศผลรอบ ${currentRound.round_id}!\nน้ำหนัก: ${weight} กรัม\n👉 ผลคือ: ${result} 👈\nระบบจ่ายเงินเข้าเครดิตผู้ชนะเรียบร้อยแล้ว` });
+        
+        // ส่ง LINE แจ้งรายบุคคลให้ลูกค้าที่เล่น
+        if (userNotifs.length > 0) notifyGAS('notifyUsers', { users: userNotifs });
+
         alert(`ตัดผลสำเร็จ! ผลคือ: ${result}`);
         document.getElementById('txtShrimpWeight').value = '';
       } catch (error) { alert("เกิดข้อผิดพลาด: " + error.message); } 
