@@ -293,8 +293,15 @@
       let day = String(d.getDate()).padStart(2, '0');
       let localDateStr = `${year}-${month}-${day}`;
       
-      document.getElementById('repDateSelector').value = localDateStr;
-      document.getElementById('repDateSelector').addEventListener('change', loadDailyReport);
+      const dateInput = document.getElementById('repDateSelector');
+      dateInput.value = localDateStr;
+      
+      // เมื่อผู้ใช้เลือกวันที่ใหม่ ให้โหลดรายงานอัตโนมัติ (ไม่ต้องกดปุ่มค้นหาก็ได้)
+      dateInput.addEventListener('change', function() {
+         loadDailyReport();
+      });
+      
+      // ... (โค้ด LIFF ด้านล่างเหมือนเดิม)
       
       try {
         await liff.init({ liffId: APP_CONFIG.LIFF_ID_ADMIN });
