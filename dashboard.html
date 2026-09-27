@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>บอร์ดสด - บ่อตกกุ้ง</title>
   
-  <!-- โหลด Config และ Supabase (เอา LIFF ออกแล้วเพื่อให้เปิดในเบราว์เซอร์ปกติได้) -->
+  <!-- โหลด Config และ Supabase -->
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,19 +14,51 @@
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap');
     
     :root {
-      --bg-dark: #090a10; --card-bg: #141724; --card-border: #232738;
-      --blue-main: #3b82f6; --red-main: #ef4444; --green-main: #10b981; --yellow-main: #f59e0b;
-      --text-main: #ffffff; --text-muted: #94a3b8;
+      --bg-dark: #090a10; 
+      --card-bg: #141724; 
+      --card-border: #232738;
+      --blue-main: #3b82f6; 
+      --red-main: #ef4444; 
+      --green-main: #10b981; 
+      --yellow-main: #f59e0b;
+      --text-main: #ffffff; 
+      --text-muted: #94a3b8;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; align-items: center; -webkit-font-smoothing: antialiased; }
+    
+    body { 
+      font-family: 'Kanit', sans-serif; 
+      background-color: var(--bg-dark); 
+      color: var(--text-main); 
+      min-height: 100vh; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      -webkit-font-smoothing: antialiased; 
+    }
 
-    #loadingScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
-    .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--blue-main); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+    /* หน้า Loading Screen ป้องกันจอขาว */
+    #loadingScreen { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: var(--bg-dark); display: flex; flex-direction: column; 
+      justify-content: center; align-items: center; z-index: 9999; 
+    }
+    .spinner { 
+      border: 4px solid rgba(255,255,255,0.1); 
+      border-left-color: var(--blue-main); 
+      border-radius: 50%; width: 50px; height: 50px; 
+      animation: spin 1s linear infinite; margin-bottom: 15px; 
+    }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    .dashboard-container { background: var(--card-bg); border: 1px solid var(--card-border); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease; display: none; }
+    /* โครงสร้าง Dashboard */
+    .dashboard-container { 
+      background: var(--card-bg); border: 1px solid var(--card-border); 
+      display: flex; flex-direction: column; justify-content: space-between; 
+      transition: all 0.3s ease; display: none; /* ซ่อนไว้ก่อนจนกว่าจะโหลดเสร็จ */
+    }
+    
     .top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); }
     .window-controls { display: flex; gap: 8px; }
     .dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -45,7 +77,7 @@
     .timer-value { font-weight: 800; color: var(--yellow-main); font-family: monospace; line-height: 1; }
     .timer-red { color: var(--red-main); }
 
-    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; margin-top: 20px; }
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; margin-top: 20px;}
     .card { border: 1px solid var(--card-border); border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
     .card.even { background: #101528; border-color: rgba(59, 130, 246, 0.35); box-shadow: inset 0 0 25px rgba(59, 130, 246, 0.08); }
     .card.odd { background: #1f1217; border-color: rgba(239, 68, 68, 0.35); box-shadow: inset 0 0 25px rgba(239, 68, 68, 0.08); }
@@ -59,7 +91,7 @@
     .card.even .progress-fill { background: var(--blue-main); box-shadow: 0 0 12px var(--blue-main); }
     .card.odd .progress-fill { background: var(--red-main); box-shadow: 0 0 12px var(--red-main); }
 
-    .bottom-section { display: flex; margin-top: 20px; }
+    .bottom-section { display: flex; margin-top: 20px;}
     .summary-card, .last-result-card { background: #0d0f18; border: 1px solid var(--card-border); border-radius: 16px; display: flex; justify-content: space-between; align-items: center; }
     .summary-label { color: var(--text-muted); }
     .summary-total { font-weight: 800; color: var(--green-main); }
@@ -73,6 +105,7 @@
     .winner-badge.odd { background: rgba(239, 68, 68, 0.2); color: var(--red-main); border-color: rgba(239, 68, 68, 0.5); }
     .winner-badge.gray { background: transparent; color: var(--text-muted); border-color: var(--text-muted); }
 
+    /* โหมดจอ TV / หน้าจอคอมพิวเตอร์ (แนวนอน 16:9) */
     @media (min-width: 769px) {
       body { padding: 2vh 2vw; background: radial-gradient(circle at center, #131726 0%, #08090f 100%); }
       .dashboard-container { width: 96vw; max-width: 1550px; aspect-ratio: 16 / 9; max-height: 92vh; border-radius: 24px; padding: 30px 40px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7); }
@@ -81,6 +114,8 @@
       .cards-grid { gap: 24px; margin-bottom: 22px; flex: 1; } .card { padding: 30px; } .card-title { font-size: 1.8rem; margin-bottom: 10px; } .card-amount { font-size: 5rem; margin-bottom: 15px; } .card-stats { font-size: 1.3rem; margin-bottom: 18px; } .progress-bar { height: 12px; }
       .bottom-section { flex-direction: row; gap: 20px; } .summary-card, .last-result-card { flex: 1; padding: 24px 30px; } .summary-label { font-size: 1.4rem; } .summary-total { font-size: 3rem; } .last-result-left { gap: 20px; } .scale-icon { font-size: 3rem; } .last-result-text { font-size: 1.1rem; margin-bottom: 4px; } .last-result-weight { font-size: 2.4rem; } .winner-badge { padding: 10px 30px; font-size: 1.5rem; }
     }
+
+    /* โหมดมือถือ / สมาร์ทโฟน (แนวตั้ง) */
     @media (max-width: 768px) {
       body { padding: 12px; align-items: flex-start; }
       .dashboard-container { width: 100%; max-width: 480px; border-radius: 18px; padding: 18px 16px; gap: 16px; }
@@ -96,7 +131,7 @@
   <!-- Loading Screen -->
   <div id="loadingScreen">
     <div class="spinner"></div>
-    <div id="loadingText" style="color: var(--text-muted); font-size: 1.2rem;">กำลังโหลดกระดาน...</div>
+    <div id="loadingText" style="color: var(--text-muted); font-size: 1.2rem;">กำลังเชื่อมต่อระบบ...</div>
   </div>
 
   <div class="dashboard-container" id="mainDashboard">
@@ -138,36 +173,59 @@
   </div>
 
   <script>
-    if (typeof APP_CONFIG === 'undefined') {
-       document.getElementById('loadingText').innerText = "ข้อผิดพลาด: ไม่พบไฟล์ config.js";
-       document.getElementById('loadingText').style.color = "var(--red-main)";
-    } else {
-       initDashboard();
+    // 1. ประกาศตัวแปรทั้งหมดไว้ด้านบนสุด เพื่อป้องกันปัญหาตัวแปรหาไม่เจอ (Temporal Dead Zone)
+    let _supabase; 
+    let targetEndTimeMs = null; 
+    let isRoundOpen = false; 
+    let isFetching = false;
+
+    function formatMoney(amount) { 
+        return '฿' + Number(amount || 0).toLocaleString('th-TH'); 
     }
 
-    let _supabase; let targetEndTimeMs = null; let isRoundOpen = false; let isFetching = false;
-
-    function formatMoney(amount) { return '฿' + Number(amount || 0).toLocaleString('th-TH'); }
-
+    // 2. ฟังก์ชันหลักสำหรับตั้งค่าหน้าจอ
     async function initDashboard() {
-      // เอา LIFF ออกแล้ว ให้มันต่อ Supabase ตรงๆ เลย
-      _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-      await fetchLiveBoard();
-      document.getElementById('loadingScreen').style.display = 'none';
-      document.getElementById('mainDashboard').style.display = 'flex';
-      scheduleNextFetch();
-      startTimerLoop();
+      try {
+        if (typeof supabase === 'undefined') {
+            throw new Error("โหลดไลบรารี Supabase ไม่สำเร็จ");
+        }
+        
+        _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+        
+        // ดึงข้อมูลครั้งแรก
+        await fetchLiveBoard();
+        
+        // ซ่อน Loading และเปิดโชว์กระดาน
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('mainDashboard').style.display = 'flex';
+        
+        // เริ่มลูปดึงข้อมูลและนาฬิกา
+        scheduleNextFetch();
+        startTimerLoop();
+      } catch (err) {
+        document.getElementById('loadingText').innerText = "ข้อผิดพลาด: ไม่สามารถเชื่อมต่อฐานข้อมูลได้";
+        document.getElementById('loadingText').style.color = "var(--red-main)";
+        console.error(err);
+      }
     }
 
     function scheduleNextFetch() {
-      setTimeout(async () => { await fetchLiveBoard(); scheduleNextFetch(); }, 3000); 
+      setTimeout(async () => { 
+          await fetchLiveBoard(); 
+          scheduleNextFetch(); 
+      }, 3000); 
     }
 
     async function fetchLiveBoard() {
-      if(isFetching) return; isFetching = true;
+      if(isFetching) return; 
+      isFetching = true;
       try {
-        // ใช้ round_id ในการเรียงเพื่อป้องกันปัญหา NULL ของ created_at
-        const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(2);
+        const { data: rounds, error: roundError } = await _supabase.from('rounds')
+          .select('*')
+          .order('round_id', { ascending: false })
+          .limit(2);
+        
+        if (roundError) throw roundError;
         
         if (rounds && rounds.length > 0) {
           const r = rounds[0];
@@ -209,8 +267,14 @@
              document.getElementById('lastWinner').innerText = `-`; 
           }
 
-          const { data: bets } = await _supabase.from('bets').select('bet_type, amount, table_no, uid').eq('round_id', r.round_id).neq('status', 'Cancelled');
-          let ea = 0, oa = 0, ta = 0; let et = new Set(), ot = new Set();
+          const { data: bets } = await _supabase.from('bets')
+            .select('bet_type, amount, table_no, uid')
+            .eq('round_id', r.round_id)
+            .neq('status', 'Cancelled');
+            
+          let ea = 0, oa = 0, ta = 0; 
+          let et = new Set(), ot = new Set();
+          
           if (bets) { 
              bets.forEach(b => { 
                 ta += Number(b.amount); 
@@ -228,18 +292,26 @@
           document.getElementById('evenProgress').style.width = `${ta > 0 ? (ea/ta)*100 : 0}%`; 
           document.getElementById('oddProgress').style.width = `${ta > 0 ? (oa/ta)*100 : 0}%`;
         }
-      } catch (e) {} finally { isFetching = false; }
+      } catch (e) {
+          console.error("Dashboard Fetch Error: ", e);
+      } finally { 
+          isFetching = false; 
+      }
     }
 
     function startTimerLoop() {
       setInterval(() => {
         let display = document.getElementById('timerDisplay');
         if (!isRoundOpen || !targetEndTimeMs) { 
-           display.innerText = "00:00"; display.classList.add('timer-red'); return; 
+           display.innerText = "00:00"; 
+           display.classList.add('timer-red'); 
+           return; 
         }
         let distance = targetEndTimeMs - new Date().getTime();
         if (distance <= 0) { 
-           display.innerText = "00:00"; display.classList.add('timer-red'); isRoundOpen = false; 
+           display.innerText = "00:00"; 
+           display.classList.add('timer-red'); 
+           isRoundOpen = false; 
         } else { 
            let m = Math.floor((distance % 3600000) / 60000); 
            let s = Math.floor((distance % 60000) / 1000); 
@@ -248,6 +320,16 @@
         }
       }, 1000);
     }
+
+    // 3. ปล่อยให้หน้าเว็บโหลดโค้ดทุกอย่างเสร็จก่อน แล้วจึงเริ่มรันฟังก์ชัน (แก้ปัญหาจอขาว)
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof APP_CONFIG === 'undefined') {
+         document.getElementById('loadingText').innerText = "ข้อผิดพลาด: ไม่พบไฟล์ config.js";
+         document.getElementById('loadingText').style.color = "var(--red-main)";
+      } else {
+         initDashboard();
+      }
+    });
   </script>
 </body>
 </html>
