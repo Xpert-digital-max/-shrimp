@@ -285,8 +285,14 @@
     }
 
     async function initializeApp() {
-      let todayStr = new Date().toISOString().split('T')[0];
-      document.getElementById('repDateSelector').value = todayStr;
+      // โหลดวันที่ลง P&L อัตโนมัติ (แก้บั๊ก Timezone ให้ตรงกับเวลาไทย)
+      let d = new Date();
+      let year = d.getFullYear();
+      let month = String(d.getMonth() + 1).padStart(2, '0');
+      let day = String(d.getDate()).padStart(2, '0');
+      let localDateStr = `${year}-${month}-${day}`;
+      
+      document.getElementById('repDateSelector').value = localDateStr;
       document.getElementById('repDateSelector').addEventListener('change', loadDailyReport);
       
       try {
@@ -586,16 +592,21 @@
       const listDiv = document.getElementById('roundReportList');
       listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">กำลังโหลด...</div>';
       
-      let selDate = document.getElementById('repDateSelector').value;
+      let selDate = document.getElementById('repDateSelector').value; // จะได้ค่า เช่น 2026-09-28
       if(!selDate) return;
-      let startD = new Date(selDate); startD.setHours(0,0,0,0);
-      let endD = new Date(selDate); endD.setHours(23,59,59,999);
+      
+      // แปลงวันที่ที่เลือก ให้เป็นคำนำหน้า (Prefix) ของรอบ เช่น R-260928-
+      let parts = selDate.split('-');
+      let yy = parts[0].substring(2);
+      let mm = parts[1];
+      let dd = parts[2];
+      let prefix = `R-${yy}${mm}${dd}-`;
       
       try {
+        // ค้นหาโดยใช้คำนำหน้ารอบ (ปลอดภัยจากบั๊กเวลาโลก Timezone 100%)
         const { data: rounds } = await _supabase.from('rounds')
         .select('*')
-        .gte('created_at', startD.toISOString())
-        .lte('created_at', endD.toISOString())
+        .like('round_id', `${prefix}%`)
         .order('round_id', { ascending: false });
         
         let gGross = 0, gPayout = 0, gCancel = 0, gNet = 0; listDiv.innerHTML = '';
@@ -615,11 +626,16 @@
             card.innerHTML = `<div><div style="font-weight: 600; font-size: 0.95rem;">${r.round_id} <span style="font-size: 0.75rem; color: var(--text-muted);">(${r.weight||'-'}g - ${r.result||'-'})</span></div><div style="font-size: 0.8rem; color: var(--text-muted);">แทง: ฿${rTotBet.toLocaleString()} | จ่าย: ฿${rTotPay.toLocaleString()}</div></div><div style="text-align: right;"><div style="font-weight: bold; font-size: 1rem; color: ${pCol};">฿${rNet.toLocaleString()}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${r.status}</div></div>`;
             listDiv.appendChild(card);
           }
-        } else { listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ไม่มีข้อมูลการเล่นในวันที่เลือก</div>'; }
+        } else { 
+            listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ไม่มีข้อมูลการเล่นในวันที่เลือก</div>'; 
+        }
+        
         document.getElementById('repGrossBet').innerText = `฿${gGross.toLocaleString()}`; document.getElementById('repPayout').innerText = `-฿${gPayout.toLocaleString()}`;
         document.getElementById('repCancelled').innerText = `฿${gCancel.toLocaleString()}`; document.getElementById('repNetProfit').innerText = `฿${gNet.toLocaleString()}`;
         document.getElementById('repNetProfit').style.color = gNet >= 0 ? 'var(--green-main)' : 'var(--red-main)';
-      } catch (e) { listDiv.innerHTML = '<div style="text-align:center; color:red; padding: 15px;">ดึงรายงานขัดข้อง</div>'; }
+      } catch (e) { 
+        listDiv.innerHTML = '<div style="text-align:center; color:red; padding: 15px;">ดึงรายงานขัดข้อง: ' + e.message + '</div>'; 
+      }
     }
 
     async function searchUser() {
