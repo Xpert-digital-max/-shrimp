@@ -298,22 +298,37 @@
           currentAdminName = profile.displayName;
           await checkAdminAccess(currentOpId);
 
-          // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แล้วโชว์ช่องเติมเงินให้พร้อมกด ===
+          // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แบบใหม่ที่สะอาดขึ้น ===
           const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('t_mid')) {
-             let t_type_raw = urlParams.get('t_type');
-             let t_type = (t_type_raw === 'withdraw') ? 'ถอนเงิน' : 'ฝากเงิน';
-             
-             setCreditMode('private'); // บังคับสลับไปแท็บลูกค้าส่วนตัว
-             document.getElementById('txtTargetId').value = urlParams.get('t_mid');
-             document.getElementById('txtAmount').value = urlParams.get('t_amt') || '';
-             
-             alert(`แจ้งทำรายการ: ${t_type}\nจากลูกค้า: ${urlParams.get('t_mid')}\nยอด: ${urlParams.get('t_amt')} ฿\n\nระบบกรอกข้อมูลให้พร้อมแล้ว กรุณากดตรวจสอบและดำเนินการต่อได้เลยครับ`);
-             
-             // เลื่อนจอไปหากล่องทำรายการ
-             document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
+          let payloadData = urlParams.get('t'); // รับค่า t มา
+          
+          if (payloadData) {
+             // แยกค่าด้วยเครื่องหมายขีดล่าง (_) [0]=รหัส, [1]=ยอดเงิน, [2]=d/w
+             let dataParts = payloadData.split('_'); 
+             if (dataParts.length === 3) {
+                 let t_mid = dataParts[0];
+                 let t_amt = dataParts[1];
+                 let t_type_code = dataParts[2];
+                 let t_type_th = (t_type_code === 'w') ? 'ถอนเงิน' : 'ฝากเงิน';
+                 
+                 setCreditMode('private'); // บังคับสลับไปแท็บลูกค้าส่วนตัว
+                 document.getElementById('txtTargetId').value = t_mid;
+                 document.getElementById('txtAmount').value = t_amt;
+                 
+                 // ยิงแจ้งบอกเข้ากลุ่มว่าแอดมินคนนี้กำลังรับเรื่อง (ไม่ต้องรอให้ทำเสร็จ)
+                 notifyGAS('adminAcceptedTopup', { 
+                    adminName: currentAdminName, 
+                    targetMemberId: t_mid, 
+                    amount: t_amt,
+                    type: t_type_code
+                 });
+
+                 alert(`คุณกำลังรับรายการ: ${t_type_th}\nจากลูกค้า: ${t_mid}\nยอด: ${t_amt} ฿\n\nระบบกรอกข้อมูลให้พร้อมแล้ว กรุณากดตรวจสอบและดำเนินการต่อได้เลยครับ`);
+                 
+                 // เลื่อนจอไปหากล่องทำรายการ
+                 document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
+             }
           }
-          // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
           // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
 
         } else { liff.login({ redirectUri: window.location.href }); }
