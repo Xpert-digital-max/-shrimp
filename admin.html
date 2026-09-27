@@ -167,8 +167,9 @@
       <!-- รายงาน P&L -->
       <div class="card" id="cardReport">
         <div class="card-title" id="reportTitleText" style="color: var(--green-main);"><i class="fa-solid fa-chart-line"></i> รายงานสรุปผล (P&L)</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-          <input type="date" id="repDateSelector" class="form-control" style="flex: 2;">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; position: relative;">
+          <!-- เพิ่ม onClick showPicker เพื่อบังคับให้ปฏิทินของมือถือเด้งขึ้นมาเสมอ -->
+          <input type="date" id="repDateSelector" class="form-control" style="flex: 2; color-scheme: dark; cursor: pointer;" onclick="if(this.showPicker) this.showPicker();">
           <button class="btn btn-blue" style="flex: 1;" onclick="loadDailyReport()"><i class="fa-solid fa-search"></i> ดูรายงาน</button>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
