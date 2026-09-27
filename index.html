@@ -285,7 +285,15 @@
 
     async function initializeApp() {
       const urlParams = new URLSearchParams(window.location.search);
-      if(urlParams.get('table')) { userTableNo = urlParams.get('table'); }
+      if(urlParams.get('table')) { 
+        let qrDate = urlParams.get('d');
+        let todayDate = new Date().toISOString().split('T')[0];
+        if(qrDate && qrDate !== todayDate) {
+           alert("QR Code โต๊ะนี้หมดอายุแล้ว! (สแกนข้ามวัน) กรุณาขอ QR Code ใหม่จากพนักงานครับ");
+        } else {
+           userTableNo = urlParams.get('table'); 
+        }
+      }
       try {
         await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER });
         if (!liff.isLoggedIn()) { liff.login(); } 
