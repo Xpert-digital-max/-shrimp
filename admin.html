@@ -496,12 +496,17 @@
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล");
 
         const res = (w % 2 === 0) ? 'คู่' : 'คี่';
+        
+        // ดึงการตั้งค่า
         const { data: set } = await _supabase.from('system_settings').select('water_margin, comm_rate').eq('id', 1).single();
         const margin = set ? set.water_margin : 0.05; 
         const commRate = set ? set.comm_rate : 0.01;
 
-        // ดึงรายการแทงของรอบนี้มาทั้งหมด
-        const { data: bets } = await _supabase.from('bets').select('*, users(referrer_uid)').eq('round_id', lr[0].round_id).eq('status', 'Active');
+        // ดึงรายการแทงของรอบนี้มาทั้งหมด (ดึงเฉพาะตาราง bets เพื่อป้องกัน Error จากการ Join)
+        const { data: bets, error: betsError } = await _supabase.from('bets').select('*').eq('round_id', lr[0].round_id).eq('status', 'Active');
+        
+        if (betsError) throw new Error("ไม่สามารถดึงข้อมูลบิลได้: " + betsError.message);
+
         let targetUids = new Set(); // เก็บรายชื่อคนที่จะแจ้งผล
         let winCount = 0;
 
@@ -511,13 +516,7 @@
             // เก็บ UID ทุกคนที่แทงในรอบนี้เพื่อส่งผล
             if (bet.uid) { targetUids.add(bet.uid); } 
 
-            // จ่ายค่าคอม
-            if (bet.users && bet.users.referrer_uid) {
-               let commAmount = bet.amount * commRate;
-               const { data: refUser } = await _supabase.from('users').select('commission_balance, uid').eq('member_id', bet.users.referrer_uid).single();
-               if(refUser) await _supabase.from('users').update({ commission_balance: (refUser.commission_balance || 0) + commAmount }).eq('uid', refUser.uid);
-            }
-
+            // ตรวจสอบผลการแทง
             if (bet.bet_type === res) {
               winCount++;
               
@@ -525,22 +524,25 @@
               let profit = bet.amount * (1 - margin);
               let payout = bet.amount + profit;
               
+              // อัปเดตสถานะบิล
               await _supabase.from('bets').update({ status: 'Win', payout: payout }).eq('bet_id', bet.bet_id);
               
-              // --- ส่วนนี้แหละครับที่หายไปในโค้ดของคุณ ---
-              // คืนเครดิตเข้าโต๊ะ หรือ บัญชีลูกค้า
-              if (bet.play_mode === 'table') {
-                  const { data: tData } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single();
-                  if(tData) {
-                      await _supabase.from('tables').update({ credit: tData.credit + payout }).eq('table_no', bet.table_no);
-                  }
-              } else {
-                  const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single();
-                  if(uData) {
-                      await _supabase.from('users').update({ credit_balance: uData.credit_balance + payout }).eq('uid', bet.uid);
+              // คืนเครดิตเข้าบัญชีลูกค้า
+              const { data: uData } = await _supabase.from('users').select('credit_balance, referrer_uid').eq('uid', bet.uid).single();
+              
+              if(uData) {
+                  // เติมเครดิตให้คนชนะ
+                  await _supabase.from('users').update({ credit_balance: uData.credit_balance + payout }).eq('uid', bet.uid);
+                  
+                  // จ่ายค่าคอมให้คนแนะนำ (แยกมาทำตรงนี้เพื่อความชัวร์)
+                  if (uData.referrer_uid) {
+                     let commAmount = bet.amount * commRate;
+                     const { data: refUser } = await _supabase.from('users').select('commission_balance, uid').eq('member_id', uData.referrer_uid).single();
+                     if(refUser) {
+                         await _supabase.from('users').update({ commission_balance: (refUser.commission_balance || 0) + commAmount }).eq('uid', refUser.uid);
+                     }
                   }
               }
-              // ----------------------------------------
               
             } else { 
               await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); 
@@ -550,7 +552,7 @@
         
         await _supabase.from('rounds').update({ status: 'Ended', weight: w, result: res }).eq('round_id', lr[0].round_id);
         
-        // นอกจากคนที่แทงรอบนี้ ให้ดึงคนที่มาเล่นวันนี้รวมเข้าไปด้วย เพื่อให้ได้รับผลกันทั่วถึง (ตามที่คุณขอไว้)
+        // ดึงคนที่มาเล่นวันนี้รวมเข้าไปด้วย เพื่อให้ได้รับผลกันทั่วถึง
         let todayStr = new Date().toISOString().split('T')[0];
         const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
         if (activeBets) {
@@ -568,10 +570,10 @@
             });
         }
         
-        alert(`ตัดผลสำเร็จ! ผลคือ: ${res}`); 
+        alert(`ตัดผลสำเร็จ! ผลคือ: ${res} (ชนะ ${winCount} บิล)`); 
         document.getElementById('txtShrimpWeight').value = '';
       } catch (e) { 
-        alert("เกิดข้อผิดพลาด: " + e.message); 
+        alert("เกิดข้อผิดพลาดในการตัดผล: " + e.message); 
       } finally { 
         document.getElementById('btnFinalize').innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; 
         fetchAdminDashboard(); 
