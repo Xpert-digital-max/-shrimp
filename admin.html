@@ -17,7 +17,7 @@
       --bg-panel: #161925;
     }
     body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; }
+    .container { max-width: 600px; margin: 0 auto; padding-bottom: 50px; }
     .header { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;}
     .header-title { font-size: 1.5rem; font-weight: 600; }
     .op-badge { background: #334155; padding: 5px 10px; border-radius: 8px; font-size: 0.8rem; }
@@ -25,7 +25,6 @@
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; color: var(--blue-main); border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;}
     
-    /* ... (CSS ส่วนอื่นๆ เหมือนเดิม) ... */
     .admin-round-card { background: var(--bg-panel); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; margin-bottom: 15px; }
     .live-dot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .live-indicator { background: rgba(16, 185, 129, 0.2); color: var(--green-main); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
@@ -73,7 +72,6 @@
     .settings-content.open { display: block; }
     .toggle-btn { background: #334155; width: 100%; border: none; padding: 10px; color: white; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 
-    /* CSS สำหรับกล่อง Affiliate (ระบบแนะนำ) */
     .affiliate-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .aff-box { background: #0f111a; padding: 12px; border-radius: 8px; border: 1px solid var(--card-border); text-align: center; }
     .aff-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; }
@@ -361,6 +359,9 @@
       let today = new Date().toISOString().split('T')[0];
       document.getElementById('repDateSelector').value = today;
 
+      // เพิ่ม Event Listener ให้กล่องวันที่ เพื่อให้ดึงรายงานใหม่เวลากดเปลี่ยนวัน
+      document.getElementById('repDateSelector').addEventListener('change', loadDailyReport);
+
       try {
         await liff.init({ liffId: APP_CONFIG.LIFF_ID_ADMIN });
         if (liff.isLoggedIn()) {
@@ -396,7 +397,7 @@
             loadSettings();
           }
           
-          loadAffiliateStats(user); // โหลดหน้าแนะนำให้พนักงานทุกคน
+          loadAffiliateStats(user); 
           fetchAdminDashboard();
           setInterval(fetchAdminDashboard, 3000);
           loadTableList(); 
@@ -408,20 +409,16 @@
     // ระบบ Affiliate (เฉพาะพนักงาน)
     // ==========================================
     async function loadAffiliateStats(user) {
-      // สร้างลิงก์ที่มีรหัสคนแนะนำ (ref)
-      let refUrl = `https://liff.line.me/${APP_CONFIG.LIFF_ID_PLAYER}?ref=${user.member_id}`;
+      let refUrl = `https://liff.line.me/${APP_CONFIG.LIFF_ID_PLAYER}?_ref=${user.member_id}`;
       document.getElementById('linkAffiliate').value = refUrl;
       let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(refUrl)}`;
       document.getElementById('qrAffiliate').src = qrUrl;
 
       try {
-        // นับลูกค้าทั้งหมดที่แนะนำมา
         const { data: refUsers } = await _supabase.from('users').select('uid').eq('referrer_uid', user.member_id);
         document.getElementById('affTotalUsers').innerText = `${refUsers ? refUsers.length : 0} คน`;
-
         document.getElementById('affCommission').innerText = `฿${(user.commission_balance || 0).toLocaleString()}`;
         
-        // นับลูกค้าที่แทงในวันนี้
         if (refUsers && refUsers.length > 0) {
           let uids = refUsers.map(u => u.uid);
           let todayStr = new Date().toISOString().split('T')[0];
@@ -510,8 +507,10 @@
 
     async function fetchAdminDashboard() {
       try {
-        const { data: round } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(1).single();
-        if(round) {
+        // ดึงรอบใหม่ล่าสุด โดยเรียงตาม created_at แบบ Descending (แก้บั๊กค้าง)
+        const { data: rounds } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(1);
+        if(rounds && rounds.length > 0) {
+          const round = rounds[0];
           document.getElementById('adminRoundId').innerText = `รอบ ${round.round_id}`;
           targetEndTimeMs = round.end_time_ms || 0;
           let now = new Date().getTime();
@@ -581,7 +580,9 @@
         if(!confirm('ยืนยันการเปิดรอบใหม่?')) return;
         document.getElementById('btnOpenRound').innerText = 'กำลังเปิด...';
         try {
-          const { data: lastRound } = await _supabase.from('rounds').select('status, round_id').order('created_at', { ascending: false }).limit(1).single();
+          const { data: roundsList } = await _supabase.from('rounds').select('status, round_id').order('created_at', { ascending: false }).limit(1);
+          let lastRound = roundsList && roundsList.length > 0 ? roundsList[0] : null;
+          
           if (lastRound && lastRound.status !== 'Ended') throw new Error("รอบเก่ายังไม่ตัดผล! โปรดใส่ผลกุ้งก่อน");
 
           let d = new Date();
@@ -609,7 +610,9 @@
       else if (actionCmd === 'closeBetting') {
         if(!confirm('ยืนยันการปิดรับแทง?')) return;
         try {
-          const { data: lastRound } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1).single();
+          const { data: roundsList } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1);
+          let lastRound = roundsList && roundsList.length > 0 ? roundsList[0] : null;
+          
           if (lastRound && lastRound.status === 'Open') {
              await _supabase.from('rounds').update({ status: 'Closed' }).eq('round_id', lastRound.round_id);
              notifyGAS('notifyGroup', { message: `⏳ ปิดรับแทง!\nรอบ: ${lastRound.round_id}\nรอแอดมินชั่งกุ้งและประกาศผลครับ` });
@@ -627,7 +630,9 @@
 
       document.getElementById('btnFinalize').innerText = 'รอแป๊บ...';
       try {
-        const { data: currentRound } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1).single();
+        const { data: roundsList } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1);
+        let currentRound = roundsList && roundsList.length > 0 ? roundsList[0] : null;
+        
         if(!currentRound || currentRound.status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล");
 
         const result = (weight % 2 === 0) ? 'คู่' : 'คี่';
@@ -643,7 +648,6 @@
           for (let bet of bets) {
             if (bet.play_mode === 'private') { targetUids.add(bet.uid); }
             
-            // คำนวณค่าคอมมิชชั่นให้คนแนะนำ (จากยอดแทง)
             if (bet.users && bet.users.referrer_uid) {
                let commAmount = bet.amount * commRate;
                const { data: refUser } = await _supabase.from('users').select('commission_balance, uid').eq('member_id', bet.users.referrer_uid).single();
