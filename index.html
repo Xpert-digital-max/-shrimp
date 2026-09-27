@@ -285,6 +285,8 @@
 
     async function initializeApp() {
       const urlParams = new URLSearchParams(window.location.search);
+      
+      // ดักจับ QR หมดอายุของโต๊ะ
       if(urlParams.get('table')) { 
         let qrDate = urlParams.get('d');
         let todayDate = new Date().toISOString().split('T')[0];
@@ -294,6 +296,12 @@
            userTableNo = urlParams.get('table'); 
         }
       }
+
+      // ดักจับลิงก์แนะนำ (Affiliate)
+      if(urlParams.get('_ref')) {
+         sessionStorage.setItem('referrer_id', urlParams.get('_ref'));
+      }
+
       try {
         await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER });
         if (!liff.isLoggedIn()) { liff.login(); } 
@@ -317,8 +325,18 @@
           const { count } = await _supabase.from('users').select('*', { count: 'exact', head: true });
           let newMemberNo = (count || 0) + 1;
           let newMemberId = 'M' + newMemberNo.toString().padStart(4, '0');
+          let refId = sessionStorage.getItem('referrer_id') || null;
 
-          currentUser = { uid: profile.userId, member_id: newMemberId, display_name: profile.displayName, profile_pic: profile.pictureUrl || '', credit_balance: 0, role: 'Customer', status: 'Inactive' };
+          currentUser = { 
+            uid: profile.userId, 
+            member_id: newMemberId, 
+            display_name: profile.displayName, 
+            profile_pic: profile.pictureUrl || '', 
+            credit_balance: 0, 
+            role: 'Customer', 
+            status: 'Inactive',
+            referrer_uid: refId
+          };
           await _supabase.from('users').insert([currentUser]);
         } else {
           await _supabase.from('users').update({ display_name: profile.displayName, profile_pic: profile.pictureUrl || '' }).eq('uid', profile.userId);
@@ -448,7 +466,9 @@
         const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', currentLineUserId).single();
         if(uData) document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`;
 
-        const { data: rounds } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(2);
+        // แก้ไขให้ดึงรอบล่าสุดตามรอบเวลาจริงๆ โดยเรียงตาม round_id เหมือนไฟล์ admin เพื่อป้องกันปัญหาวันที่ NULL 
+        const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(2);
+        
         if (rounds && rounds.length > 0) {
           const currentRound = rounds[0];
           document.getElementById('roundIdDisplay').innerText = `รอบ ${currentRound.round_id}`;
@@ -533,7 +553,7 @@
 
       document.querySelector('.btn-submit').innerText = "กำลังดำเนินการ...";
       try {
-        const { data: round } = await _supabase.from('rounds').select('*').eq('status', 'Open').order('created_at', { ascending: false }).limit(1).single();
+        const { data: round } = await _supabase.from('rounds').select('*').eq('status', 'Open').order('round_id', { ascending: false }).limit(1).single();
         if(!round) throw new Error("ปิดรับแทงแล้ว!");
 
         const { data: set } = await _supabase.from('system_settings').select('min_bet, max_bet').eq('id', 1).single();
@@ -631,7 +651,7 @@
     }
 
     // ==========================================
-    // ระบบฝากถอน และบีบอัดรูปสลิปส่งเข้า GAS
+    // ระบบฝากถอน และบีบอัดรูปสลิปส่งเข้า GAS (อัปเดตใหม่)
     // ==========================================
     function openTopupModal() {
       if (currentUserStatus !== 'Active') { alert("บัญชียังไม่เปิดใช้งาน"); return; }
@@ -639,17 +659,27 @@
       toggleOptions();
     }
     
-    function closeTopupModal() { document.getElementById('topupModal').classList.add('hidden'); }
+    function closeTopupModal() { 
+      document.getElementById('topupModal').classList.add('hidden'); 
+      // รีเซ็ตฟอร์ม
+      document.getElementById('txtTopupAmount').value = '';
+      document.getElementById('fileSlip').value = '';
+      document.getElementById('btnSubmitTopup').disabled = false;
+      document.getElementById('btnSubmitTopup').innerHTML = 'ส่งแจ้งแอดมิน';
+    }
     
     function toggleOptions() {
       const type = document.getElementById('selTransactionType').value;
       const method = document.getElementById('selTopupMethod').value;
       
-      // ถอนเงินโชว์ตัวเลือกหักค่าน้ำ
-      if (type === 'ถอนเงิน') document.getElementById('withdrawOptionsSection').style.display = 'block';
-      else document.getElementById('withdrawOptionsSection').style.display = 'none';
+      if (type === 'ถอนเงิน') {
+         document.getElementById('withdrawOptionsSection').style.display = 'block';
+         document.getElementById('paymentMethodSection').style.display = 'none'; // ถอนบังคับโอนเงินเท่านั้น
+      } else {
+         document.getElementById('withdrawOptionsSection').style.display = 'none';
+         document.getElementById('paymentMethodSection').style.display = 'block';
+      }
 
-      // โชว์ปุ่มแนบสลิปเฉพาะตอน "ฝากเงิน" และเลือก "โอนเงิน"
       if (type === 'ฝากเงิน' && method === 'โอนเงิน') document.getElementById('slipUploadSection').style.display = 'block';
       else document.getElementById('slipUploadSection').style.display = 'none';
     }
@@ -684,27 +714,29 @@
     async function submitTopupRequest() {
       const type = document.getElementById('selTransactionType').value;
       const amount = document.getElementById('txtTopupAmount').value;
-      const method = document.getElementById('selTopupMethod').value;
+      const method = type === 'ถอนเงิน' ? 'โอนเงิน' : document.getElementById('selTopupMethod').value;
       const feeOption = document.getElementById('selWithdrawFee').value;
+      const btnSubmit = document.getElementById('btnSubmitTopup');
       
       if (!amount || amount <= 0) { alert("ระบุจำนวนเงินให้ถูกต้อง"); return; }
 
       let slipBase64 = "";
       let slipMime = "";
       
-      // ดึงรูปและบีบอัดถ้ามีรูป
       if (type === 'ฝากเงิน' && method === 'โอนเงิน') {
          const fileInput = document.getElementById('fileSlip');
          if (fileInput.files.length === 0) { alert("กรุณาแนบรูปสลิปโอนเงินด้วยครับ"); return; }
          
          const file = fileInput.files[0];
-         slipMime = 'image/jpeg'; // บังคับเป็น jpeg จากการบีบอัด
+         slipMime = 'image/jpeg';
          
-         document.getElementById('btnSubmitTopup').innerText = "กำลังอัปโหลดสลิป...";
+         btnSubmit.disabled = true;
+         btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บีบอัดรูปภาพ...';
          slipBase64 = await compressImageAndGetBase64(file);
       }
 
-      document.getElementById('btnSubmitTopup').innerText = "กำลังส่งข้อมูล...";
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งข้อมูล...';
       
       const payload = { 
         action: 'requestTopup', 
@@ -721,13 +753,26 @@
       };
 
       try {
-        const response = await fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+        const response = await fetch(APP_CONFIG.GAS_URL, { 
+           method: 'POST', 
+           body: JSON.stringify(payload), 
+           headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+        });
+        
         const res = await response.json();
-        if(res.status === 'success') { alert(`ส่งแจ้ง ${type} และแนบสลิปสำเร็จ!`); closeTopupModal(); } 
-        else { alert("ข้อผิดพลาด: " + res.message); }
-      } catch (error) { alert('ระบบอาจจะส่งไปแล้ว แต่เครือข่ายตอบกลับช้า กรุณาเช็คกับแอดมิน'); closeTopupModal(); }
-      finally {
-        document.getElementById('btnSubmitTopup').innerText = "ส่งแจ้งแอดมิน";
+        if(res.status === 'success') { 
+           alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
+           closeTopupModal(); 
+        } 
+        else { 
+           alert("ข้อผิดพลาด: " + res.message); 
+           btnSubmit.disabled = false;
+           btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
+        }
+      } catch (error) { 
+        alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); 
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
       }
     }
 
