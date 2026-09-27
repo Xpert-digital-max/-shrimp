@@ -61,7 +61,6 @@
     
     .hidden { display: none !important; }
     
-    /* ส่วนการจัดการสิทธิ์ผู้ใช้งาน */
     .user-info-box { background: #0f111a; border: 1px solid var(--card-border); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: none; }
     .user-info-text { font-size: 0.9rem; margin-bottom: 5px; }
     .badge-role { padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
@@ -69,12 +68,10 @@
     .role-op { background: rgba(59, 130, 246, 0.2); color: var(--blue-main); }
     .role-admin { background: rgba(245, 158, 11, 0.2); color: var(--yellow-main); }
     
-    /* กล่องพับ Settings */
     .settings-content { display: none; margin-top: 15px; }
     .settings-content.open { display: block; }
     .toggle-btn { background: #334155; width: 100%; border: none; padding: 10px; color: white; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 
-    /* Affiliate */
     .affiliate-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .aff-box { background: #0f111a; padding: 12px; border-radius: 8px; border: 1px solid var(--card-border); text-align: center; }
     .aff-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; }
@@ -92,7 +89,7 @@
       <div class="qr-container">
         <img id="qrImage" src="" alt="QR Code" style="width: 200px; height: 200px;">
       </div>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">ให้ลูกค้าสแกน QR นี้เพื่อผูกบัญชีกับโต๊ะ</p>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">ให้ลูกค้าสแกน QR นี้เพื่อเข้าแอปและผูกบัญชีเข้ากับโต๊ะ</p>
       <button onclick="closeQrModal()" class="btn btn-blue" style="width: 100%;">ปิดหน้าต่าง</button>
     </div>
   </div>
@@ -152,25 +149,20 @@
         <div id="liveBetsFeedList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
       </div>
 
-      <!-- ระบบแนะนำ (Affiliate) โชว์ให้พนักงาน/แอดมินดู -->
-      <div class="card" id="cardAffiliate">
+      <!-- ระบบแนะนำ (Affiliate) ตอนนี้ซ่อนไว้ตามคำขอ (hidden) -->
+      <div class="card hidden" id="cardAffiliate">
         <div class="card-title" style="color: #8b5cf6;"><i class="fa-solid fa-share-nodes"></i> ระบบแนะนำ (Referral)</div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0;">ให้ลูกค้าสแกน QR นี้เพื่อสมัครเป็นลูกค้าของคุณ</p>
         <div style="text-align: center;">
-          <div class="qr-container">
-             <img id="qrAffiliate" src="" alt="QR Affiliate" style="width: 150px; height: 150px;">
-          </div>
-          <div style="margin-bottom: 15px;">
-            <input type="text" id="linkAffiliate" class="form-control" readonly style="font-size: 0.8rem; text-align: center; color: var(--blue-main);">
-          </div>
+          <div class="qr-container"><img id="qrAffiliate" src="" alt="QR Affiliate" style="width: 150px; height: 150px;"></div>
+          <div style="margin-bottom: 15px;"><input type="text" id="linkAffiliate" class="form-control" readonly style="font-size: 0.8rem; text-align: center; color: var(--blue-main);"></div>
         </div>
         <div class="affiliate-stats">
            <div class="aff-box"><div class="aff-label">ลูกค้าของคุณ (ทั้งหมด)</div><div class="aff-val" id="affTotalUsers">0 คน</div></div>
            <div class="aff-box"><div class="aff-label">ลูกค้าที่เล่นวันนี้</div><div class="aff-val" id="affActiveToday">0 คน</div></div>
         </div>
         <div style="background: #1e293b; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px solid #334155;">
-           <div class="aff-label">รายได้ค่าคอมมิชชั่นสะสม</div>
-           <div class="aff-val money" id="affCommission">฿0</div>
+           <div class="aff-label">รายได้ค่าคอมมิชชั่นสะสม</div><div class="aff-val money" id="affCommission">฿0</div>
            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">*ได้รับส่วนแบ่งจากยอดแทงของลูกค้า</p>
         </div>
         <button class="btn" style="background: #8b5cf6; width: 100%;" onclick="alert('ระบบแจ้งถอนค่าคอมมิชชั่นจะเปิดให้ใช้งานเร็วๆ นี้ครับ')">
@@ -178,7 +170,7 @@
         </button>
       </div>
 
-      <!-- รายงาน P&L (Operator มองไม่เห็น) -->
+      <!-- รายงาน P&L -->
       <div class="card" id="cardReport">
         <div class="card-title" id="reportTitleText" style="color: var(--green-main);"><i class="fa-solid fa-chart-line"></i> รายงานสรุปผล (P&L)</div>
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -349,6 +341,7 @@
             loadDailyReport(); loadSettings();
           }
           
+          // ระบบแนะนำตอนนี้ซ่อนไว้ (CSS hidden) แต่โค้ดยังทำงานหลังบ้านเผื่อเปิดใช้
           loadAffiliateStats(user); 
           fetchAdminDashboard();
           setInterval(fetchAdminDashboard, 3000);
@@ -358,10 +351,9 @@
     }
 
     // ==========================================
-    // Affiliate (ระบบแนะนำ)
+    // Affiliate (ระบบแนะนำ) - ทำงานอยู่เบื้องหลัง
     // ==========================================
     async function loadAffiliateStats(user) {
-      // แก้ไขลิงก์ให้ไม่มี ? ติดกันหลายอัน เพื่อกัน Error 400 จาก LINE LIFF
       let cleanLiff = APP_CONFIG.LIFF_ID_PLAYER.split('?')[0]; 
       let refUrl = `https://liff.line.me/${cleanLiff}?ref=${user.member_id}`;
       document.getElementById('linkAffiliate').value = refUrl;
@@ -401,8 +393,8 @@
 
     async function fetchAdminDashboard() {
       try {
-        // แก้ไขให้ดึงรอบที่ใหม่ล่าสุดเสมอ โดยเรียงตาม id สร้างหลังสุด
-        const { data: rounds } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(1);
+        // ดึงรอบใหม่สุดโดยเรียงตาม round_id แทน created_at เพื่อป้องกันปัญหา NULL ขวางทาง
+        const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(1);
         if(rounds && rounds.length > 0) {
           let r = rounds[0];
           document.getElementById('adminRoundId').innerText = `รอบ ${r.round_id}`;
@@ -422,7 +414,7 @@
              isRoundOpen = false; targetEndTimeMs = 0;
           }
 
-          const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', r.round_id).neq('status', 'Cancelled').order('created_at', { ascending: false });
+          const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', r.round_id).neq('status', 'Cancelled').order('bet_id', { ascending: false });
           let ea=0, oa=0; let et=new Set(), ot=new Set();
           let fl = document.getElementById('liveBetsFeedList'); fl.innerHTML = '';
           if(bets && bets.length > 0) {
@@ -446,7 +438,7 @@
         if(!confirm('ยืนยันการเปิดรอบใหม่?')) return;
         document.getElementById('btnOpenRound').innerText = 'กำลังเปิด...';
         try {
-          const { data: lr } = await _supabase.from('rounds').select('status, round_id').order('created_at', { ascending: false }).limit(1);
+          const { data: lr } = await _supabase.from('rounds').select('status, round_id').order('round_id', { ascending: false }).limit(1);
           if (lr && lr.length > 0 && lr[0].status !== 'Ended') throw new Error("รอบเก่ายังไม่ตัดผล! โปรดใส่ผลกุ้งก่อน");
 
           let d = new Date(); let prefix = `R-${d.getFullYear().toString().substring(2)}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}`;
@@ -464,7 +456,7 @@
       } else if (cmd === 'closeBetting') {
         if(!confirm('ยืนยันการปิดรับแทง?')) return;
         try {
-          const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1);
+          const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
           if (lr && lr.length > 0 && lr[0].status === 'Open') {
              await _supabase.from('rounds').update({ status: 'Closed' }).eq('round_id', lr[0].round_id);
              notifyGAS('notifyGroup', { message: `⏳ ปิดรับแทง!\nรอบ: ${lr[0].round_id}\nรอแอดมินชั่งกุ้งและประกาศผลครับ` });
@@ -482,7 +474,7 @@
 
       document.getElementById('btnFinalize').innerText = 'รอแป๊บ...';
       try {
-        const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1);
+        const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล");
 
         const res = (w % 2 === 0) ? 'คู่' : 'คี่';
@@ -495,7 +487,6 @@
         if (bets && bets.length > 0) {
           for (let bet of bets) {
             if (bet.play_mode === 'private') { targetUids.add(bet.uid); }
-            // คิดค่าคอมให้คนแนะนำ
             if (bet.users && bet.users.referrer_uid) {
                let commAmount = bet.amount * commRate;
                const { data: refUser } = await _supabase.from('users').select('commission_balance, uid').eq('member_id', bet.users.referrer_uid).single();
@@ -521,7 +512,7 @@
         notifyGAS('notifyGroup', { message: `⚖️ ประกาศผลรอบ ${lr[0].round_id}!\nน้ำหนัก: ${w} กรัม\n👉 ผลคือ: ${res} 👈\nระบบจ่ายเงินเข้าเครดิตเรียบร้อยแล้ว` });
         alert(`ตัดผลสำเร็จ! ผลคือ: ${res}`); document.getElementById('txtShrimpWeight').value = '';
       } catch (e) { alert(e.message); } 
-      finally { document.getElementById('btnFinalize').innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดรอบ'; fetchAdminDashboard(); loadDailyReport(); }
+      finally { document.getElementById('btnFinalize').innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); loadDailyReport(); }
     }
 
     // ==========================================
@@ -537,7 +528,8 @@
       let endD = new Date(selDate); endD.setHours(23,59,59,999);
       
       try {
-        const { data: rounds } = await _supabase.from('rounds').select('*').gte('created_at', startD.toISOString()).lte('created_at', endD.toISOString()).order('created_at', { ascending: false });
+        // ใช้ round_id ในการเรียงลำดับเพื่อแก้บั๊ก created_at NULL
+        const { data: rounds } = await _supabase.from('rounds').select('*').gte('created_at', startD.toISOString()).lte('created_at', endD.toISOString()).order('round_id', { ascending: false });
         let gGross = 0, gPayout = 0, gCancel = 0, gNet = 0; listDiv.innerHTML = '';
         if(rounds && rounds.length > 0) {
           for(let r of rounds) {
@@ -555,7 +547,7 @@
             card.innerHTML = `<div><div style="font-weight: 600; font-size: 0.95rem;">${r.round_id} <span style="font-size: 0.75rem; color: var(--text-muted);">(${r.weight||'-'}g - ${r.result||'-'})</span></div><div style="font-size: 0.8rem; color: var(--text-muted);">แทง: ฿${rTotBet.toLocaleString()} | จ่าย: ฿${rTotPay.toLocaleString()}</div></div><div style="text-align: right;"><div style="font-weight: bold; font-size: 1rem; color: ${pCol};">฿${rNet.toLocaleString()}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${r.status}</div></div>`;
             listDiv.appendChild(card);
           }
-        } else { listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ไม่มีข้อมูลการเล่นในวันนี้</div>'; }
+        } else { listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ไม่มีข้อมูลการเล่นในวันที่เลือก</div>'; }
         document.getElementById('repGrossBet').innerText = `฿${gGross.toLocaleString()}`; document.getElementById('repPayout').innerText = `-฿${gPayout.toLocaleString()}`;
         document.getElementById('repCancelled').innerText = `฿${gCancel.toLocaleString()}`; document.getElementById('repNetProfit').innerText = `฿${gNet.toLocaleString()}`;
         document.getElementById('repNetProfit').style.color = gNet >= 0 ? 'var(--green-main)' : 'var(--red-main)';
