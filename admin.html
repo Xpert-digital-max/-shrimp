@@ -298,19 +298,14 @@
           currentAdminName = profile.displayName;
           await checkAdminAccess(currentOpId);
 
-          // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แบบใหม่ที่สะอาดขึ้น ===
-          let urlStr = window.location.href;
-          let payloadData = null;
+          // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แบบใช้ Hash (#) ===
+          // ดึงค่า URL Fragment ที่อยู่หลัง # มาทั้งหมด
+          let hashData = window.location.hash; 
 
-          // ตรวจสอบว่ามีพารามิเตอร์ t= ใน URL หรือไม่
-          if (urlStr.includes("?t=")) {
-             payloadData = urlStr.split("?t=")[1];
-             if(payloadData.includes("&")) {
-                payloadData = payloadData.split("&")[0]; // เอาเฉพาะค่า t
-             }
-          }
-          
-          if (payloadData) {
+          if (hashData && hashData.length > 1) {
+             // ตัดเครื่องหมาย # ตัวแรกทิ้ง
+             let payloadData = hashData.substring(1); 
+             
              // แยกค่าด้วยเครื่องหมายขีดล่าง (_) [0]=รหัส, [1]=ยอดเงิน, [2]=d/w
              let dataParts = payloadData.split('_'); 
              if (dataParts.length === 3) {
@@ -335,6 +330,9 @@
                  
                  // เลื่อนจอไปหากล่องทำรายการ
                  document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
+                 
+                 // เคลียร์ค่า hash ออกจาก URL เพื่อป้องกันเวลารีเฟรชแล้วมันแจ้งซ้ำ
+                 history.replaceState(null, null, ' ');
              }
           }
           // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
