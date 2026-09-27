@@ -237,7 +237,7 @@
         </div>
         <div class="form-group">
           <label id="targetLabel">หมายเลขโต๊ะ</label>
-          <input type="text" id="txtTargetId" class="form-control" placeholder="ระบุเบอร์โต๊ะ หรือ รหัส M0001">
+          <input type="text" id="txtTargetId" class="form-control" placeholder="ระบุเบอร์โต๊ะ หรือ รหัส M000X">
         </div>
         <div class="form-group">
           <label>จำนวนเงิน (บาท)</label>
@@ -656,25 +656,52 @@
 
     // ================== Credit Manage ==================
     async function processCredit(type) {
-      let tId = document.getElementById('txtTargetId').value.trim(); let amt = parseFloat(document.getElementById('txtAmount').value);
-      if(!tId || !amt) return alert("กรอกข้อมูลให้ครบ"); if(!confirm(`ยืนยัน?`)) return;
+      // ดึงค่ามาพักไว้ก่อน
+      let tId = document.getElementById('txtTargetId').value.trim(); 
+      let amountStr = document.getElementById('txtAmount').value;
+      let amount = parseFloat(amountStr);
+      
+      // ดักข้อผิดพลาดเบื้องต้น
+      if(!tId || !amountStr || isNaN(amount) || amount <= 0) { 
+          alert("กรุณากรอกข้อมูลให้ครบถ้วน และจำนวนเงินต้องมากกว่า 0"); 
+          return; 
+      }
+      
+      let actionText = type === 'deposit' ? 'เติมเงิน (ฝาก)' : 'ถอนเงิน (คืน)';
+      if(!confirm(`ยืนยันการทำรายการ ${actionText} จำนวน ${amount} บาท ให้กับรหัส ${tId}?`)) return;
+      
       try {
         if(creditMode === 'table') {
-          const { data: t } = await _supabase.from('tables').select('credit').eq('table_no', tId).single();
-          await _supabase.from('tables').update({ credit: type==='deposit'?t.credit+amt:t.credit-amt }).eq('table_no', tId);
-          alert(`สำเร็จ โต๊ะ ${tId} เครดิตคงเหลือ: ฿${type==='deposit'?t.credit+amt:t.credit-amt}`);
+          // ส่วนของโต๊ะ
+          const { data: t, error: tableError } = await _supabase.from('tables').select('credit').eq('table_no', tId).single();
+          if(tableError || !t) throw new Error("ไม่พบเบอร์โต๊ะนี้ในระบบ กรุณาตรวจสอบอีกครั้ง");
+          
+          let newBal = type === 'deposit' ? t.credit + amount : t.credit - amount;
+          
+          const { error: updateError } = await _supabase.from('tables').update({ credit: newBal }).eq('table_no', tId);
+          if (updateError) throw new Error("ไม่สามารถอัปเดตยอดเงินได้: " + updateError.message);
+          
+          alert(`ทำรายการสำเร็จ!\nโต๊ะ: ${tId}\nเครดิตคงเหลือ: ฿${newBal.toLocaleString()}`);
+          
         } else {
-          // ดักว่า User Active หรือเปล่าถึงยอมเติมเงิน
-          const { data: u } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit').eq('member_id', tId).single();
-          if(!u) throw new Error("ไม่พบรหัสสมาชิกนี้ในระบบ");
+          // ส่วนของบุคคล (รหัสสมาชิก)
+          const { data: u, error: userError } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit').eq('member_id', tId).single();
+          
+          if(userError || !u) {
+              console.error("Supabase Error:", userError); 
+              throw new Error("ไม่พบรหัสสมาชิกนี้ในระบบ กรุณาตรวจสอบให้แน่ใจว่าพิมพ์ถูกต้อง (เช่น M0001 ตัวใหญ่)");
+          }
           if(u.status !== 'Active') throw new Error(`ไม่สามารถทำรายการได้! บัญชีลูกค้ารหัส ${tId} ถูกระงับหรือยังไม่อนุมัติ (Inactive)`);
 
           let newBal = type === 'deposit' ? u.credit_balance + amount : u.credit_balance - amount;
           
           let updateData = { credit_balance: newBal };
-          if (type === 'deposit') { updateData.total_deposit = (u.total_deposit || 0) + amount; }
+          if (type === 'deposit') { 
+              updateData.total_deposit = (u.total_deposit || 0) + amount; 
+          }
           
-          await _supabase.from('users').update(updateData).eq('uid', u.uid);
+          const { error: updateError } = await _supabase.from('users').update(updateData).eq('uid', u.uid);
+          if (updateError) throw new Error("ไม่สามารถอัปเดตยอดเงินส่วนตัวได้: " + updateError.message);
           
           // ส่งบอก GAS ให้แจ้งกลุ่มและหาลูกค้า
           notifyGAS('adminTopupComplete', { 
@@ -685,10 +712,17 @@
              amount: amount, 
              newBalance: newBal 
           });
-          alert(`ทำรายการสำเร็จ! ระบบได้ส่งแจ้งเตือนกลับหาลูกค้าแล้ว`);
+          
+          alert(`ทำรายการสำเร็จ! ระบบได้อัปเดตยอดและส่งแจ้งเตือนกลับหาลูกค้าแล้ว`);
         }
-        document.getElementById('txtAmount').value = ""; loadTableList();
-      } catch(e){ alert(e.message); }
+        
+        // ล้างช่องกรอกจำนวนเงิน
+        document.getElementById('txtAmount').value = ""; 
+        loadTableList(); // รีเฟรชรายการโต๊ะเผื่อมีการเปลี่ยนแปลง
+        
+      } catch(e) { 
+        alert(e.message); 
+      }
     }
 
     function setCreditMode(m) {
