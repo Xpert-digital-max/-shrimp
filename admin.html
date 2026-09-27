@@ -68,6 +68,11 @@
     .role-cust { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
     .role-op { background: rgba(59, 130, 246, 0.2); color: var(--blue-main); }
     .role-admin { background: rgba(245, 158, 11, 0.2); color: var(--yellow-main); }
+    
+    /* ส่วนตั้งค่าบ่อแบบยืดหดได้ */
+    .settings-content { display: none; margin-top: 15px; }
+    .settings-content.open { display: block; }
+    .toggle-btn { background: #334155; width: 100%; border: none; padding: 10px; color: white; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
   </style>
 </head>
 <body>
@@ -109,6 +114,7 @@
           </div>
           <div class="round-sub-info" id="adminRoundSubInfo">กำลังโหลดสถานะรอบ...</div>
 
+          <!-- สถิติยอดแทงสองฝั่ง -->
           <div class="admin-stats-grid">
             <div class="admin-stat-box even">
               <div class="astat-label">คู่ • EVEN</div>
@@ -247,26 +253,34 @@
 
       <!-- ตั้งค่าระบบบ่อ -->
       <div class="card" id="cardSettings">
-        <div class="card-title" style="color: var(--blue-main);"><i class="fa-solid fa-gears"></i> ตั้งค่าระบบบ่อ</div>
-        <div class="form-group">
-          <label>เวลาจับเวลาต่อรอบ (นาที)</label>
-          <input type="number" id="settingRoundDuration" class="form-control" placeholder="เช่น 15">
+        <div class="card-title" style="color: var(--blue-main); margin-bottom: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa-solid fa-gears"></i> ตั้งค่าระบบบ่อ</span>
+            <button class="toggle-btn" onclick="toggleSettings()" style="width: auto; padding: 5px 10px;"><i id="settingsIcon" class="fa-solid fa-chevron-down"></i></button>
+          </div>
         </div>
-        <div class="form-group">
-          <label>อัตราค่าน้ำ (เช่น 0.05 คือ 5%)</label>
-          <input type="number" step="0.01" id="settingWaterMargin" class="form-control" placeholder="0.05">
+        
+        <div id="settingsContent" class="settings-content">
+          <div class="form-group">
+            <label>เวลาจับเวลาต่อรอบ (นาที)</label>
+            <input type="number" id="settingRoundDuration" class="form-control" placeholder="เช่น 15">
+          </div>
+          <div class="form-group">
+            <label>อัตราค่าน้ำ (เช่น 0.05 คือ 5%)</label>
+            <input type="number" step="0.01" id="settingWaterMargin" class="form-control" placeholder="0.05">
+          </div>
+          <div class="form-group">
+            <label>ยอดแทงขั้นต่ำ (บาท)</label>
+            <input type="number" id="settingMinBet" class="form-control" placeholder="20">
+          </div>
+          <div class="form-group">
+            <label>ยอดแทงสูงสุด (บาท)</label>
+            <input type="number" id="settingMaxBet" class="form-control" placeholder="5000">
+          </div>
+          <button class="btn btn-blue" id="btnSaveSetting" style="width: 100%;" onclick="saveSettings()">
+            <i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่าระบบ
+          </button>
         </div>
-        <div class="form-group">
-          <label>ยอดแทงขั้นต่ำ (บาท)</label>
-          <input type="number" id="settingMinBet" class="form-control" placeholder="20">
-        </div>
-        <div class="form-group">
-          <label>ยอดแทงสูงสุด (บาท)</label>
-          <input type="number" id="settingMaxBet" class="form-control" placeholder="5000">
-        </div>
-        <button class="btn btn-blue" id="btnSaveSetting" style="width: 100%;" onclick="saveSettings()">
-          <i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่าระบบ
-        </button>
       </div>
 
       <!-- ยกเลิกบิล -->
@@ -290,7 +304,9 @@
     let currentOpId = ""; 
     let creditMode = "table";
     let currentUserRole = "Customer";
-    let selectedUserIdForManage = ""; // เก็บ UID ผู้ใช้ที่ถูกค้นหา
+    let selectedUserIdForManage = ""; 
+    let targetEndTimeMs = null; 
+    let isRoundOpen = false;
 
     async function notifyGAS(action, payloadData) {
       try {
@@ -311,6 +327,7 @@
           await checkAdminAccess(currentOpId);
         } else { liff.login({ redirectUri: window.location.href }); }
       } catch (e) { alert("LIFF Error: " + e.message); }
+      startAdminTimer();
     }
 
     async function checkAdminAccess(uid) {
@@ -328,7 +345,6 @@
           let roleBadge = (currentUserRole === 'Superadmin' || currentUserRole === 'Admin') ? "แอดมินบ่อ" : "พนักงาน (Operator)";
           document.getElementById('opProfile').innerHTML = `<i class="fa-solid fa-user-tie"></i> ${roleBadge}`;
           
-          // ซ่อนเมนูที่ไม่เกี่ยวกับ Operator (พนักงานทั่วไป)
           if (currentUserRole === 'Operator') {
             document.getElementById('cardReport').classList.add('hidden');
             document.getElementById('cardSettings').classList.add('hidden');
@@ -345,7 +361,7 @@
     }
 
     // ==========================================
-    // จัดการสิทธิ์ผู้ใช้งาน (ค้นหา / เปลี่ยนสถานะ / เปลี่ยนสิทธิ์)
+    // จัดการสิทธิ์ผู้ใช้งาน (พับเก็บเมื่อบันทึก)
     // ==========================================
     async function searchUser() {
       let mId = document.getElementById('txtSearchUser').value.trim();
@@ -384,7 +400,8 @@
       try {
         await _supabase.from('users').update({ status: newStatus }).eq('uid', selectedUserIdForManage);
         alert(`เปลี่ยนสถานะเป็น ${newStatus} สำเร็จ`);
-        searchUser(); // รีโหลดข้อมูลมาโชว์ใหม่
+        document.getElementById('userInfoContainer').style.display = 'none'; // พับเก็บ
+        document.getElementById('txtSearchUser').value = '';
       } catch (e) { alert("อัปเดตสถานะไม่สำเร็จ"); }
     }
 
@@ -395,36 +412,62 @@
       try {
         await _supabase.from('users').update({ role: newRole }).eq('uid', selectedUserIdForManage);
         alert(`อัปเดตสิทธิ์เป็น ${newRole} สำเร็จ`);
-        searchUser(); 
+        document.getElementById('userInfoContainer').style.display = 'none'; // พับเก็บ
+        document.getElementById('txtSearchUser').value = '';
       } catch (e) { alert("อัปเดตสิทธิ์ไม่สำเร็จ"); }
     }
 
     // ==========================================
-    // Dashboard ควบคุมรอบ และรายการแทง
+    // Dashboard (โชว์เวลา และยอดแทง)
     // ==========================================
+    function startAdminTimer() {
+      setInterval(() => {
+        let subTextEl = document.getElementById('adminRoundSubInfo');
+        if (!isRoundOpen || !targetEndTimeMs) return;
+        
+        let now = new Date().getTime();
+        let distance = targetEndTimeMs - now;
+        
+        if (distance <= 0) {
+          subTextEl.innerText = "หมดเวลาแทง • รอแอดมินปิดรับแทง";
+          subTextEl.style.color = "var(--red-main)";
+        } else {
+          let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+          subTextEl.innerText = `เปิดอยู่ • เหลือเวลา ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          subTextEl.style.color = "var(--yellow-main)";
+        }
+      }, 1000);
+    }
+
     async function fetchAdminDashboard() {
       try {
         const { data: round } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(1).single();
         if(round) {
           document.getElementById('adminRoundId').innerText = `รอบ ${round.round_id}`;
-          
-          let statusHtml = '';
-          let subText = '';
+          targetEndTimeMs = round.end_time_ms || 0;
           let now = new Date().getTime();
 
-          if (round.status === 'Open' && (!round.end_time_ms || now < round.end_time_ms)) {
-             statusHtml = `<div class="live-indicator" style="background:rgba(16,185,129,0.2); color:var(--green-main);">● เปิดรับแทง</div>`;
-             let mins = round.end_time_ms ? Math.ceil((round.end_time_ms - now) / 60000) : 15;
-             subText = `เปิดอยู่ • เหลือเวลาประมาณ ${mins} นาที`;
+          if (round.status === 'Open' && now < targetEndTimeMs) {
+             document.getElementById('adminStatusBadge').innerHTML = `● เปิดรับแทง`;
+             document.getElementById('adminStatusBadge').style.color = "var(--green-main)";
+             document.getElementById('adminStatusBadge').style.background = "rgba(16,185,129,0.2)";
+             isRoundOpen = true;
           } else if (round.status === 'Open' || round.status === 'Closed') {
-             statusHtml = `<div class="live-indicator" style="background:rgba(239,68,68,0.2); color:var(--red-main);">● ปิดรับแทง (รอชั่งกุ้ง)</div>`;
-             subText = `สถานะ: รอแอดมินชั่งกุ้งและตัดผล`;
+             document.getElementById('adminStatusBadge').innerHTML = `● ปิดรับแทง (รอผล)`;
+             document.getElementById('adminStatusBadge').style.color = "var(--red-main)";
+             document.getElementById('adminStatusBadge').style.background = "rgba(239,68,68,0.2)";
+             document.getElementById('adminRoundSubInfo').innerText = `สถานะ: รอแอดมินชั่งกุ้งและตัดผล`;
+             document.getElementById('adminRoundSubInfo').style.color = "var(--text-muted)";
+             isRoundOpen = false; targetEndTimeMs = 0;
           } else {
-             statusHtml = `<div class="live-indicator" style="background:rgba(148,163,184,0.2); color:var(--text-muted);">● จบรอบแล้ว</div>`;
-             subText = `ผลรอบนี้: ${round.result} (${round.weight} กรัม)`;
+             document.getElementById('adminStatusBadge').innerHTML = `● จบรอบแล้ว`;
+             document.getElementById('adminStatusBadge').style.color = "var(--text-muted)";
+             document.getElementById('adminStatusBadge').style.background = "rgba(148,163,184,0.2)";
+             document.getElementById('adminRoundSubInfo').innerText = `ผลรอบนี้: ${round.result} (${round.weight} กรัม)`;
+             document.getElementById('adminRoundSubInfo').style.color = "var(--text-muted)";
+             isRoundOpen = false; targetEndTimeMs = 0;
           }
-          document.getElementById('adminStatusBadge').innerHTML = statusHtml;
-          document.getElementById('adminRoundSubInfo').innerText = subText;
 
           const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', round.round_id).neq('status', 'Cancelled').order('created_at', { ascending: false });
           let evenAmt = 0, oddAmt = 0;
@@ -462,97 +505,9 @@
         } else {
           document.getElementById('adminRoundId').innerText = "รอบ -";
           document.getElementById('adminRoundSubInfo').innerText = "ยังไม่มีรอบในระบบ";
+          isRoundOpen = false;
         }
       } catch (error) {}
-    }
-
-    async function loadTableList() {
-      const listDiv = document.getElementById('tableListContainer');
-      try {
-        const { data: tables } = await _supabase.from('tables').select('*').order('created_at', { ascending: true });
-        listDiv.innerHTML = '';
-        if(!tables || tables.length === 0) { listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted);">ยังไม่มีโต๊ะในระบบ</div>'; return; }
-        
-        tables.forEach(t => {
-          let card = document.createElement('div');
-          card.style.cssText = "background: #0f111a; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;";
-          card.innerHTML = `
-            <div>
-              <div style="font-weight: 600; font-size: 1rem; color: white;">โต๊ะ ${t.table_no}</div>
-              <div style="font-size: 0.8rem; color: var(--green-main);">เครดิต: ฿${t.credit.toLocaleString()}</div>
-            </div>
-            <div style="display:flex; gap:5px;">
-              <button class="btn btn-blue" style="padding: 6px 10px; font-size: 0.85rem;" onclick="showQrCode('${t.table_no}')"><i class="fa-solid fa-qrcode"></i> QR</button>
-              <button class="btn btn-red" style="padding: 6px 10px; font-size: 0.85rem;" onclick="deleteTable('${t.table_no}')"><i class="fa-solid fa-trash"></i></button>
-            </div>
-          `;
-          listDiv.appendChild(card);
-        });
-      } catch(e) {}
-    }
-
-    async function addNewTable() {
-      let tNo = document.getElementById('txtNewTable').value.trim();
-      if(!tNo) { alert("กรุณาระบุหมายเลขโต๊ะ"); return; }
-      document.getElementById('btnAddTable').innerText = 'กำลังเพิ่ม...';
-      try {
-        const { error } = await _supabase.from('tables').insert([{ table_no: tNo, credit: 0 }]);
-        if (error) throw error;
-        alert('เพิ่มโต๊ะสำเร็จ!');
-        document.getElementById('txtNewTable').value = '';
-        loadTableList();
-      } catch (error) { alert("เพิ่มไม่ได้ อาจมีชื่อโต๊ะนี้อยู่แล้ว"); }
-      document.getElementById('btnAddTable').innerHTML = '<i class="fa-solid fa-plus"></i> เพิ่มโต๊ะ';
-    }
-
-    async function deleteTable(tableNo) {
-      if(!confirm(`ยืนยันการลบโต๊ะ ${tableNo} ใช่หรือไม่?`)) return;
-      try {
-        await _supabase.from('tables').delete().eq('table_no', tableNo);
-        alert('ลบโต๊ะสำเร็จ!');
-        loadTableList();
-      } catch(e) { alert("ลบโต๊ะไม่ได้"); }
-    }
-
-    function showQrCode(tableNo) {
-      document.getElementById('qrTableNoDisplay').innerText = tableNo;
-      let todayDateStr = new Date().toISOString().split('T')[0]; 
-      let liffUrl = `https://liff.line.me/${APP_CONFIG.LIFF_ID_PLAYER}?table=${tableNo}&d=${todayDateStr}`;
-      let qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(liffUrl)}`;
-      document.getElementById('qrImage').src = qrImgUrl;
-      document.getElementById('qrModal').classList.remove('hidden');
-    }
-    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
-
-    async function loadSettings() {
-      try {
-        const { data: set } = await _supabase.from('system_settings').select('*').eq('id', 1).single();
-        if (set) {
-          document.getElementById('settingWaterMargin').value = set.water_margin;
-          document.getElementById('settingRoundDuration').value = set.round_duration;
-          document.getElementById('settingMinBet').value = set.min_bet || 20;
-          document.getElementById('settingMaxBet').value = set.max_bet || 5000;
-        }
-      } catch (e) {}
-    }
-
-    async function saveSettings() {
-      let waterMargin = document.getElementById('settingWaterMargin').value;
-      let roundDuration = document.getElementById('settingRoundDuration').value;
-      let minBet = document.getElementById('settingMinBet').value;
-      let maxBet = document.getElementById('settingMaxBet').value;
-
-      if (!confirm("ยืนยันการบันทึกการตั้งค่าระบบ?")) return;
-      document.getElementById('btnSaveSetting').innerText = 'กำลังบันทึก...';
-      try {
-        const { error } = await _supabase.from('system_settings').update({ 
-          water_margin: parseFloat(waterMargin), round_duration: parseInt(roundDuration),
-          min_bet: parseFloat(minBet), max_bet: parseFloat(maxBet)
-        }).eq('id', 1);
-        if(error) throw error;
-        alert("บันทึกสำเร็จ");
-      } catch(e) { alert("บันทึกไม่ได้"); }
-      document.getElementById('btnSaveSetting').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่าระบบ';
     }
 
     async function controlRound(actionCmd) {
@@ -653,6 +608,9 @@
       }
     }
 
+    // ==========================================
+    // ระบบการเงิน
+    // ==========================================
     async function processCredit(type) {
       let targetId = document.getElementById('txtTargetId').value.trim();
       let amount = parseFloat(document.getElementById('txtAmount').value);
@@ -673,7 +631,7 @@
           await _supabase.from('users').update({ credit_balance: newBal }).eq('member_id', targetId);
           alert(`สำเร็จ รหัส ${targetId} เครดิตคงเหลือ: ฿${newBal}`);
         }
-        document.getElementById('txtAmount').value = ""; 
+        document.getElementById('txtAmount').value = ""; // เคลียร์ยอดหลังทำรายการเสร็จ
         loadTableList();
       } catch (error) { alert("ข้อผิดพลาด: " + error.message); }
     }
@@ -691,28 +649,114 @@
       }
     }
 
-    async function cancelBet() {
-      let betId = document.getElementById('txtBetId').value.trim();
-      if(!betId) { alert("กรุณาระบุรหัสบิล"); return; }
-      if(!confirm("ยืนยันการยกเลิกบิลและคืนเครดิต?")) return;
-      try {
-        const { data: bet } = await _supabase.from('bets').select('*').eq('bet_id', betId).single();
-        if(!bet || bet.status !== 'Active') throw new Error("บิลไม่ถูกต้อง หรือถูกประมวลผลไปแล้ว");
-        
-        await _supabase.from('bets').update({ status: 'Cancelled' }).eq('bet_id', betId);
-        if (bet.play_mode === 'table') {
-           const { data: t } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single();
-           await _supabase.from('tables').update({ credit: t.credit + bet.amount }).eq('table_no', bet.table_no);
-        } else {
-           const { data: u } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single();
-           await _supabase.from('users').update({ credit_balance: u.credit_balance + bet.amount }).eq('uid', bet.uid);
-        }
-        alert("ยกเลิกบิลสำเร็จ");
-        document.getElementById('txtBetId').value = "";
-        loadDailyReport();
-      } catch (e) { alert("ยกเลิกไม่สำเร็จ"); }
+    // ==========================================
+    // ตาราง / ตั้งค่า
+    // ==========================================
+    function toggleSettings() {
+      const content = document.getElementById('settingsContent');
+      const icon = document.getElementById('settingsIcon');
+      if (content.classList.contains('open')) {
+        content.classList.remove('open');
+        icon.className = "fa-solid fa-chevron-down";
+      } else {
+        content.classList.add('open');
+        icon.className = "fa-solid fa-chevron-up";
+      }
     }
 
+    async function loadTableList() {
+      const listDiv = document.getElementById('tableListContainer');
+      try {
+        const { data: tables } = await _supabase.from('tables').select('*').order('created_at', { ascending: true });
+        listDiv.innerHTML = '';
+        if(!tables || tables.length === 0) { listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted);">ยังไม่มีโต๊ะในระบบ</div>'; return; }
+        
+        tables.forEach(t => {
+          let card = document.createElement('div');
+          card.style.cssText = "background: #0f111a; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;";
+          card.innerHTML = `
+            <div>
+              <div style="font-weight: 600; font-size: 1rem; color: white;">โต๊ะ ${t.table_no}</div>
+              <div style="font-size: 0.8rem; color: var(--green-main);">เครดิต: ฿${t.credit.toLocaleString()}</div>
+            </div>
+            <div style="display:flex; gap:5px;">
+              <button class="btn btn-blue" style="padding: 6px 10px; font-size: 0.85rem;" onclick="showQrCode('${t.table_no}')"><i class="fa-solid fa-qrcode"></i> QR</button>
+              <button class="btn btn-red" style="padding: 6px 10px; font-size: 0.85rem;" onclick="deleteTable('${t.table_no}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          `;
+          listDiv.appendChild(card);
+        });
+      } catch(e) {}
+    }
+
+    async function addNewTable() {
+      let tNo = document.getElementById('txtNewTable').value.trim();
+      if(!tNo) { alert("กรุณาระบุหมายเลขโต๊ะ"); return; }
+      document.getElementById('btnAddTable').innerText = 'กำลังเพิ่ม...';
+      try {
+        const { error } = await _supabase.from('tables').insert([{ table_no: tNo, credit: 0 }]);
+        if (error) throw error;
+        alert('เพิ่มโต๊ะสำเร็จ!');
+        document.getElementById('txtNewTable').value = '';
+        loadTableList();
+      } catch (error) { alert("เพิ่มไม่ได้ อาจมีชื่อโต๊ะนี้อยู่แล้ว"); }
+      document.getElementById('btnAddTable').innerHTML = '<i class="fa-solid fa-plus"></i> เพิ่มโต๊ะ';
+    }
+
+    async function deleteTable(tableNo) {
+      if(!confirm(`ยืนยันการลบโต๊ะ ${tableNo} ใช่หรือไม่?`)) return;
+      try {
+        await _supabase.from('tables').delete().eq('table_no', tableNo);
+        alert('ลบโต๊ะสำเร็จ!');
+        loadTableList();
+      } catch(e) { alert("ลบโต๊ะไม่ได้"); }
+    }
+
+    function showQrCode(tableNo) {
+      document.getElementById('qrTableNoDisplay').innerText = tableNo;
+      let todayDateStr = new Date().toISOString().split('T')[0]; 
+      let liffUrl = `https://liff.line.me/${APP_CONFIG.LIFF_ID_PLAYER}?table=${tableNo}&d=${todayDateStr}`;
+      let qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(liffUrl)}`;
+      document.getElementById('qrImage').src = qrImgUrl;
+      document.getElementById('qrModal').classList.remove('hidden');
+    }
+    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
+
+    async function loadSettings() {
+      try {
+        const { data: set } = await _supabase.from('system_settings').select('*').eq('id', 1).single();
+        if (set) {
+          document.getElementById('settingWaterMargin').value = set.water_margin;
+          document.getElementById('settingRoundDuration').value = set.round_duration;
+          document.getElementById('settingMinBet').value = set.min_bet || 20;
+          document.getElementById('settingMaxBet').value = set.max_bet || 5000;
+        }
+      } catch (e) {}
+    }
+
+    async function saveSettings() {
+      let waterMargin = document.getElementById('settingWaterMargin').value;
+      let roundDuration = document.getElementById('settingRoundDuration').value;
+      let minBet = document.getElementById('settingMinBet').value;
+      let maxBet = document.getElementById('settingMaxBet').value;
+
+      if (!confirm("ยืนยันการบันทึกการตั้งค่าระบบ?")) return;
+      document.getElementById('btnSaveSetting').innerText = 'กำลังบันทึก...';
+      try {
+        const { error } = await _supabase.from('system_settings').update({ 
+          water_margin: parseFloat(waterMargin), round_duration: parseInt(roundDuration),
+          min_bet: parseFloat(minBet), max_bet: parseFloat(maxBet)
+        }).eq('id', 1);
+        if(error) throw error;
+        alert("บันทึกสำเร็จ");
+        toggleSettings(); // พับเก็บเมื่อบันทึกเสร็จ
+      } catch(e) { alert("บันทึกไม่ได้"); }
+      document.getElementById('btnSaveSetting').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่าระบบ';
+    }
+
+    // ==========================================
+    // รายงาน & ยกเลิกบิล
+    // ==========================================
     async function loadDailyReport() {
       if (currentUserRole === 'Operator') return; 
       const listDiv = document.getElementById('roundReportList');
@@ -764,6 +808,28 @@
         document.getElementById('repNetProfit').innerText = `฿${gNet.toLocaleString()}`;
         document.getElementById('repNetProfit').style.color = gNet >= 0 ? 'var(--green-main)' : 'var(--red-main)';
       } catch (e) { listDiv.innerHTML = '<div style="text-align:center; color:red; padding: 15px;">ดึงรายงานขัดข้อง</div>'; }
+    }
+
+    async function cancelBet() {
+      let betId = document.getElementById('txtBetId').value.trim();
+      if(!betId) { alert("กรุณาระบุรหัสบิล"); return; }
+      if(!confirm("ยืนยันการยกเลิกบิลและคืนเครดิต?")) return;
+      try {
+        const { data: bet } = await _supabase.from('bets').select('*').eq('bet_id', betId).single();
+        if(!bet || bet.status !== 'Active') throw new Error("บิลไม่ถูกต้อง หรือถูกประมวลผลไปแล้ว");
+        
+        await _supabase.from('bets').update({ status: 'Cancelled' }).eq('bet_id', betId);
+        if (bet.play_mode === 'table') {
+           const { data: t } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single();
+           await _supabase.from('tables').update({ credit: t.credit + bet.amount }).eq('table_no', bet.table_no);
+        } else {
+           const { data: u } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single();
+           await _supabase.from('users').update({ credit_balance: u.credit_balance + bet.amount }).eq('uid', bet.uid);
+        }
+        alert("ยกเลิกบิลสำเร็จ");
+        document.getElementById('txtBetId').value = "";
+        loadDailyReport();
+      } catch (e) { alert("ยกเลิกไม่สำเร็จ"); }
     }
 
     initializeApp();
