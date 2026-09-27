@@ -301,14 +301,19 @@
           // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แล้วโชว์ช่องเติมเงินให้พร้อมกด ===
           const urlParams = new URLSearchParams(window.location.search);
           if (urlParams.get('t_mid')) {
-             let t_type = urlParams.get('t_type') || 'ฝากเงิน';
+             let t_type_raw = urlParams.get('t_type');
+             let t_type = (t_type_raw === 'withdraw') ? 'ถอนเงิน' : 'ฝากเงิน';
+             
              setCreditMode('private'); // บังคับสลับไปแท็บลูกค้าส่วนตัว
              document.getElementById('txtTargetId').value = urlParams.get('t_mid');
              document.getElementById('txtAmount').value = urlParams.get('t_amt') || '';
+             
              alert(`แจ้งทำรายการ: ${t_type}\nจากลูกค้า: ${urlParams.get('t_mid')}\nยอด: ${urlParams.get('t_amt')} ฿\n\nระบบกรอกข้อมูลให้พร้อมแล้ว กรุณากดตรวจสอบและดำเนินการต่อได้เลยครับ`);
+             
              // เลื่อนจอไปหากล่องทำรายการ
              document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
           }
+          // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
           // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
 
         } else { liff.login({ redirectUri: window.location.href }); }
