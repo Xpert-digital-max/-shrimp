@@ -237,7 +237,7 @@
         </div>
         <div class="form-group">
           <label id="targetLabel">หมายเลขโต๊ะ</label>
-          <input type="text" id="txtTargetId" class="form-control" placeholder="ระบุเบอร์โต๊ะ หรือ รหัส M000X">
+          <input type="text" id="txtTargetId" class="form-control" placeholder="ระบุเบอร์โต๊ะ หรือ รหัส M0001">
         </div>
         <div class="form-group">
           <label>จำนวนเงิน (บาท)</label>
@@ -285,7 +285,6 @@
     }
 
     async function initializeApp() {
-      // โหลดวันที่ลง P&L อัตโนมัติและดักจับตอนเปลี่ยนวัน
       let todayStr = new Date().toISOString().split('T')[0];
       document.getElementById('repDateSelector').value = todayStr;
       document.getElementById('repDateSelector').addEventListener('change', loadDailyReport);
@@ -298,15 +297,9 @@
           currentAdminName = profile.displayName;
           await checkAdminAccess(currentOpId);
 
-          // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แบบใช้ Hash (#) ===
-          // ดึงค่า URL Fragment ที่อยู่หลัง # มาทั้งหมด
           let hashData = window.location.hash; 
-
           if (hashData && hashData.length > 1) {
-             // ตัดเครื่องหมาย # ตัวแรกทิ้ง
              let payloadData = hashData.substring(1); 
-             
-             // แยกค่าด้วยเครื่องหมายขีดล่าง (_) [0]=รหัส, [1]=ยอดเงิน, [2]=d/w
              let dataParts = payloadData.split('_'); 
              if (dataParts.length === 3) {
                  let t_mid = dataParts[0];
@@ -314,11 +307,10 @@
                  let t_type_code = dataParts[2];
                  let t_type_th = (t_type_code === 'w') ? 'ถอนเงิน' : 'ฝากเงิน';
                  
-                 setCreditMode('private'); // บังคับสลับไปแท็บลูกค้าส่วนตัว
+                 setCreditMode('private');
                  document.getElementById('txtTargetId').value = t_mid;
                  document.getElementById('txtAmount').value = t_amt;
                  
-                 // ยิงแจ้งบอกเข้ากลุ่มว่าแอดมินคนนี้กำลังรับเรื่อง
                  notifyGAS('adminAcceptedTopup', { 
                     adminName: currentAdminName, 
                     targetMemberId: t_mid, 
@@ -327,16 +319,10 @@
                  });
 
                  alert(`คุณกำลังรับรายการ: ${t_type_th}\nจากลูกค้า: ${t_mid}\nยอด: ${t_amt} ฿\n\nระบบกรอกข้อมูลให้พร้อมแล้ว กรุณากดตรวจสอบและดำเนินการต่อได้เลยครับ`);
-                 
-                 // เลื่อนจอไปหากล่องทำรายการ
                  document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
-                 
-                 // เคลียร์ค่า hash ออกจาก URL เพื่อป้องกันเวลารีเฟรชแล้วมันแจ้งซ้ำ
                  history.replaceState(null, null, ' ');
              }
           }
-          // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
-
         } else { liff.login({ redirectUri: window.location.href }); }
       } catch (e) { alert("LIFF Error: " + e.message); }
       startAdminTimer();
@@ -415,7 +401,6 @@
 
     async function fetchAdminDashboard() {
       try {
-        // ใช้ round_id ในการอ้างอิงรอบล่าสุด เพื่อป้องกันบักจาก created_at NULL
         let { data: rounds } = await _supabase.from('rounds').select('*').in('status', ['Open', 'Closed']).order('round_id', { ascending: false }).limit(1);
         if(!rounds || rounds.length === 0) {
            let { data: endedRounds } = await _supabase.from('rounds').select('*').eq('status', 'Ended').order('round_id', { ascending: false }).limit(1);
@@ -512,23 +497,30 @@
 
         const res = (w % 2 === 0) ? 'คู่' : 'คี่';
         const { data: set } = await _supabase.from('system_settings').select('water_margin, comm_rate').eq('id', 1).single();
-        const margin = set ? set.water_margin : 0.05; const commRate = set ? set.comm_rate : 0.01;
+        const margin = set ? set.water_margin : 0.05; 
+        const commRate = set ? set.comm_rate : 0.01;
 
         const { data: bets } = await _supabase.from('bets').select('*, users(referrer_uid)').eq('round_id', lr[0].round_id).eq('status', 'Active');
-        let targetUids = new Set(); let winCount = 0;
+        let targetUids = new Set(); 
+        let winCount = 0;
 
         if (bets && bets.length > 0) {
           for (let bet of bets) {
-            if (bet.play_mode === 'private') { targetUids.add(bet.uid); }
+            // เพิ่มคนที่ลงเดิมพันรอบนี้เข้า set เพื่อแจ้งเตือน
+            if (bet.uid) { targetUids.add(bet.uid); } 
+
             if (bet.users && bet.users.referrer_uid) {
                let commAmount = bet.amount * commRate;
                const { data: refUser } = await _supabase.from('users').select('commission_balance, uid').eq('member_id', bet.users.referrer_uid).single();
                if(refUser) await _supabase.from('users').update({ commission_balance: (refUser.commission_balance || 0) + commAmount }).eq('uid', refUser.uid);
             }
+
             if (bet.bet_type === res) {
               winCount++;
               let payout = bet.amount + (bet.amount * (1 - margin));
               await _supabase.from('bets').update({ status: 'Win', payout: payout }).eq('bet_id', bet.bet_id);
+              
+              // เพิ่มเครดิตกลับให้ผู้ชนะ
               if (bet.play_mode === 'table') {
                 const { data: tData } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single();
                 if(tData) await _supabase.from('tables').update({ credit: tData.credit + payout }).eq('table_no', bet.table_no);
@@ -536,16 +528,41 @@
                 const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single();
                 if(uData) await _supabase.from('users').update({ credit_balance: uData.credit_balance + payout }).eq('uid', bet.uid);
               }
-            } else { await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); }
+            } else { 
+              await _supabase.from('bets').update({ status: 'Lose', payout: 0 }).eq('bet_id', bet.bet_id); 
+            }
           }
         }
+        
         await _supabase.from('rounds').update({ status: 'Ended', weight: w, result: res }).eq('round_id', lr[0].round_id);
         
-        if(targetUids.size > 0) notifyGAS('notifyUsersResult', { roundId: lr[0].round_id, weight: w, result: res, winCount: winCount, targetUids: Array.from(targetUids) });
-        notifyGAS('notifyGroup', { message: `⚖️ ประกาศผลรอบ ${lr[0].round_id}!\nน้ำหนัก: ${w} กรัม\n👉 ผลคือ: ${res} 👈\nระบบจ่ายเงินเข้าเครดิตเรียบร้อยแล้ว` });
-        alert(`ตัดผลสำเร็จ! ผลคือ: ${res}`); document.getElementById('txtShrimpWeight').value = '';
-      } catch (e) { alert(e.message); } 
-      finally { document.getElementById('btnFinalize').innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); loadDailyReport(); }
+        // ดึงคนที่มีความเคลื่อนไหววันนี้เพิ่มเข้า set เพื่อแจ้งผล
+        let todayStr = new Date().toISOString().split('T')[0];
+        const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
+        if (activeBets) {
+            activeBets.forEach(b => targetUids.add(b.uid));
+        }
+        
+        // ส่งเฉพาะในวันที่ผู้เล่นเท่านั้น
+        if(targetUids.size > 0) {
+            notifyGAS('notifyUsersResult', { 
+                roundId: lr[0].round_id, 
+                weight: w, 
+                result: res, 
+                winCount: winCount, 
+                targetUids: Array.from(targetUids) 
+            });
+        }
+        
+        alert(`ตัดผลสำเร็จ! ผลคือ: ${res}`); 
+        document.getElementById('txtShrimpWeight').value = '';
+      } catch (e) { 
+        alert(e.message); 
+      } finally { 
+        document.getElementById('btnFinalize').innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; 
+        fetchAdminDashboard(); 
+        loadDailyReport(); 
+      }
     }
 
     async function loadDailyReport() {
@@ -555,7 +572,6 @@
       
       let selDate = document.getElementById('repDateSelector').value;
       if(!selDate) return;
-      // ให้โหลดข้อมูลตามวันที่ ที่เลือกได้อย่างแม่นยำ
       let startD = new Date(selDate); startD.setHours(0,0,0,0);
       let endD = new Date(selDate); endD.setHours(23,59,59,999);
       
@@ -590,7 +606,6 @@
       } catch (e) { listDiv.innerHTML = '<div style="text-align:center; color:red; padding: 15px;">ดึงรายงานขัดข้อง</div>'; }
     }
 
-    // ================== User Manage ==================
     async function searchUser() {
       let mId = document.getElementById('txtSearchUser').value.trim(); if(!mId) return;
       try {
@@ -622,7 +637,6 @@
       document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
     }
     
-    // ================== Table Manage ==================
     async function loadTableList() {
       const l = document.getElementById('tableListContainer');
       const { data: t } = await _supabase.from('tables').select('*').order('created_at', { ascending: true });
@@ -654,14 +668,11 @@
 
     function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
 
-    // ================== Credit Manage ==================
     async function processCredit(type) {
-      // ดึงค่ามาพักไว้ก่อน
       let tId = document.getElementById('txtTargetId').value.trim(); 
       let amountStr = document.getElementById('txtAmount').value;
       let amount = parseFloat(amountStr);
       
-      // ดักข้อผิดพลาดเบื้องต้น
       if(!tId || !amountStr || isNaN(amount) || amount <= 0) { 
           alert("กรุณากรอกข้อมูลให้ครบถ้วน และจำนวนเงินต้องมากกว่า 0"); 
           return; 
@@ -672,7 +683,6 @@
       
       try {
         if(creditMode === 'table') {
-          // ส่วนของโต๊ะ
           const { data: t, error: tableError } = await _supabase.from('tables').select('credit').eq('table_no', tId).single();
           if(tableError || !t) throw new Error("ไม่พบเบอร์โต๊ะนี้ในระบบ กรุณาตรวจสอบอีกครั้ง");
           
@@ -684,7 +694,6 @@
           alert(`ทำรายการสำเร็จ!\nโต๊ะ: ${tId}\nเครดิตคงเหลือ: ฿${newBal.toLocaleString()}`);
           
         } else {
-          // ส่วนของบุคคล (รหัสสมาชิก)
           const { data: u, error: userError } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit').eq('member_id', tId).single();
           
           if(userError || !u) {
@@ -703,7 +712,6 @@
           const { error: updateError } = await _supabase.from('users').update(updateData).eq('uid', u.uid);
           if (updateError) throw new Error("ไม่สามารถอัปเดตยอดเงินส่วนตัวได้: " + updateError.message);
           
-          // ส่งบอก GAS ให้แจ้งกลุ่มและหาลูกค้า
           notifyGAS('adminTopupComplete', { 
              adminName: currentAdminName, 
              type: type, 
@@ -716,9 +724,8 @@
           alert(`ทำรายการสำเร็จ! ระบบได้อัปเดตยอดและส่งแจ้งเตือนกลับหาลูกค้าแล้ว`);
         }
         
-        // ล้างช่องกรอกจำนวนเงิน
         document.getElementById('txtAmount').value = ""; 
-        loadTableList(); // รีเฟรชรายการโต๊ะเผื่อมีการเปลี่ยนแปลง
+        loadTableList(); 
         
       } catch(e) { 
         alert(e.message); 
@@ -733,7 +740,6 @@
       document.getElementById('targetLabel').innerText = m==='table'?"หมายเลขโต๊ะ":"รหัสลูกค้า (M000X)"; 
     }
 
-    // ================== Cancle Bet ==================
     async function cancelBet() {
       let bId = document.getElementById('txtBetId').value.trim(); if(!confirm("ยืนยันยกเลิกและคืนเครดิต?")) return;
       try {
@@ -746,7 +752,6 @@
       } catch(e) { alert("ยกเลิกไม่สำเร็จ"); }
     }
 
-    // ================== Settings ==================
     async function loadSettings() {
       const { data: s } = await _supabase.from('system_settings').select('*').eq('id', 1).single(); 
       if(s) { 
