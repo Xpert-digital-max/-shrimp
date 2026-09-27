@@ -87,7 +87,7 @@
     <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; width: 100%; max-width: 350px; text-align: center; position: relative;">
       <h3 style="margin-top: 0; color: var(--blue-main); border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">QR Code โต๊ะ <span id="qrTableNoDisplay"></span></h3>
       <div class="qr-container"><img id="qrImage" src="" alt="QR Code" style="width: 200px; height: 200px;"></div>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">ให้ลูกค้าสแกน QR นี้เพื่อผูกบัญชีกับโต๊ะ</p>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">ให้ลูกค้าสแกน QR นี้เพื่อเข้าแอปและผูกบัญชีเข้ากับโต๊ะ</p>
       <button onclick="closeQrModal()" class="btn btn-blue" style="width: 100%;">ปิดหน้าต่าง</button>
     </div>
   </div>
@@ -285,15 +285,32 @@
     }
 
     async function initializeApp() {
+      // โหลดวันที่ลง P&L อัตโนมัติและดักจับตอนเปลี่ยนวัน
       let todayStr = new Date().toISOString().split('T')[0];
       document.getElementById('repDateSelector').value = todayStr;
+      document.getElementById('repDateSelector').addEventListener('change', loadDailyReport);
       
       try {
         await liff.init({ liffId: APP_CONFIG.LIFF_ID_ADMIN });
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
-          currentOpId = profile.userId; currentAdminName = profile.displayName;
+          currentOpId = profile.userId; 
+          currentAdminName = profile.displayName;
           await checkAdminAccess(currentOpId);
+
+          // === เริ่ม: โค้ดรับข้อมูลจากปุ่ม CTA แล้วโชว์ช่องเติมเงินให้พร้อมกด ===
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('t_mid')) {
+             let t_type = urlParams.get('t_type') || 'ฝากเงิน';
+             setCreditMode('private'); // บังคับสลับไปแท็บลูกค้าส่วนตัว
+             document.getElementById('txtTargetId').value = urlParams.get('t_mid');
+             document.getElementById('txtAmount').value = urlParams.get('t_amt') || '';
+             alert(`แจ้งทำรายการ: ${t_type}\nจากลูกค้า: ${urlParams.get('t_mid')}\nยอด: ${urlParams.get('t_amt')} ฿\n\nระบบกรอกข้อมูลให้พร้อมแล้ว กรุณากดตรวจสอบและดำเนินการต่อได้เลยครับ`);
+             // เลื่อนจอไปหากล่องทำรายการ
+             document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
+          }
+          // === จบ: โค้ดรับข้อมูลจากปุ่ม CTA ===
+
         } else { liff.login({ redirectUri: window.location.href }); }
       } catch (e) { alert("LIFF Error: " + e.message); }
       startAdminTimer();
@@ -320,10 +337,13 @@
             document.getElementById('cardCreditManage').classList.add('hidden');
             document.getElementById('cardSettings').classList.add('hidden');
           } else {
-            loadDailyReport(); loadSettings();
+            loadDailyReport(); 
+            loadSettings();
           }
           loadAffiliateStats(user); 
-          fetchAdminDashboard(); setInterval(fetchAdminDashboard, 3000); loadTableList(); 
+          fetchAdminDashboard(); 
+          setInterval(fetchAdminDashboard, 3000); 
+          loadTableList(); 
         }
       } catch (error) {}
     }
@@ -369,9 +389,10 @@
 
     async function fetchAdminDashboard() {
       try {
-        let { data: rounds } = await _supabase.from('rounds').select('*').in('status', ['Open', 'Closed']).order('created_at', { ascending: false }).limit(1);
+        // ใช้ round_id ในการอ้างอิงรอบล่าสุด เพื่อป้องกันบักจาก created_at NULL
+        let { data: rounds } = await _supabase.from('rounds').select('*').in('status', ['Open', 'Closed']).order('round_id', { ascending: false }).limit(1);
         if(!rounds || rounds.length === 0) {
-           let { data: endedRounds } = await _supabase.from('rounds').select('*').eq('status', 'Ended').order('created_at', { ascending: false }).limit(1);
+           let { data: endedRounds } = await _supabase.from('rounds').select('*').eq('status', 'Ended').order('round_id', { ascending: false }).limit(1);
            rounds = endedRounds;
         }
 
@@ -393,7 +414,7 @@
              isRoundOpen = false; targetEndTimeMs = 0;
           }
 
-          const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', r.round_id).neq('status', 'Cancelled').order('created_at', { ascending: false });
+          const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', r.round_id).neq('status', 'Cancelled').order('bet_id', { ascending: false });
           let ea=0, oa=0; let et=new Set(), ot=new Set(); let fl = document.getElementById('liveBetsFeedList'); fl.innerHTML = '';
           if(bets && bets.length > 0) {
             bets.forEach(b => {
@@ -415,7 +436,7 @@
         if(!confirm('ยืนยันการเปิดรอบใหม่?')) return;
         document.getElementById('btnOpenRound').innerText = 'กำลังเปิด...';
         try {
-          const { data: lr } = await _supabase.from('rounds').select('status, round_id').order('created_at', { ascending: false }).limit(1);
+          const { data: lr } = await _supabase.from('rounds').select('status, round_id').order('round_id', { ascending: false }).limit(1);
           if (lr && lr.length > 0 && lr[0].status !== 'Ended') throw new Error("รอบเก่ายังไม่ตัดผล! โปรดใส่ผลกุ้งก่อน");
 
           let d = new Date(); let prefix = `R-${d.getFullYear().toString().substring(2)}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}`;
@@ -426,17 +447,26 @@
           let duration = set ? set.round_duration : 15;
           await _supabase.from('rounds').insert([{ round_id: rndName, status: 'Open', end_time_ms: new Date().getTime() + (duration * 60000) }]);
           
-          notifyGAS('notifyGroup', { message: `📢 เปิดรับแทงแล้ว!\nรอบ: ${rndName}\nหมดเวลาในอีก ${duration} นาที` });
+          let todayStr = new Date().toISOString().split('T')[0];
+          const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
+          let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
+          notifyGAS('notifyRoundStatusToUsers', { status: 'Open', roundId: rndName, duration: duration, targetUids: activeUids });
+          
           alert(`เปิดรอบ ${rndName} สำเร็จ!`);
         } catch(e) { alert(e.message); }
         document.getElementById('btnOpenRound').innerHTML = '<i class="fa-solid fa-play"></i> 1. เปิดรอบใหม่'; fetchAdminDashboard();
       } else if (cmd === 'closeBetting') {
         if(!confirm('ยืนยันการปิดรับแทง?')) return;
         try {
-          const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1);
+          const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
           if (lr && lr.length > 0 && lr[0].status === 'Open') {
              await _supabase.from('rounds').update({ status: 'Closed' }).eq('round_id', lr[0].round_id);
-             notifyGAS('notifyGroup', { message: `⏳ ปิดรับแทง!\nรอบ: ${lr[0].round_id}\nรอแอดมินชั่งกุ้งและประกาศผลครับ` });
+             
+             let todayStr = new Date().toISOString().split('T')[0];
+             const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
+             let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
+             notifyGAS('notifyRoundStatusToUsers', { status: 'Closed', roundId: lr[0].round_id, targetUids: activeUids });
+
              alert("ปิดรับแทงแล้ว!");
           } else { alert("ไม่มีรอบที่กำลังเปิดรับแทง"); }
         } catch(e) { alert("ผิดพลาด"); }
@@ -451,7 +481,7 @@
 
       document.getElementById('btnFinalize').innerText = 'รอแป๊บ...';
       try {
-        const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('created_at', { ascending: false }).limit(1);
+        const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล");
 
         const res = (w % 2 === 0) ? 'คู่' : 'คี่';
@@ -499,11 +529,17 @@
       
       let selDate = document.getElementById('repDateSelector').value;
       if(!selDate) return;
+      // ให้โหลดข้อมูลตามวันที่ ที่เลือกได้อย่างแม่นยำ
       let startD = new Date(selDate); startD.setHours(0,0,0,0);
       let endD = new Date(selDate); endD.setHours(23,59,59,999);
       
       try {
-        const { data: rounds } = await _supabase.from('rounds').select('*').gte('created_at', startD.toISOString()).lte('created_at', endD.toISOString()).order('round_id', { ascending: false });
+        const { data: rounds } = await _supabase.from('rounds')
+        .select('*')
+        .gte('created_at', startD.toISOString())
+        .lte('created_at', endD.toISOString())
+        .order('round_id', { ascending: false });
+        
         let gGross = 0, gPayout = 0, gCancel = 0, gNet = 0; listDiv.innerHTML = '';
         if(rounds && rounds.length > 0) {
           for(let r of rounds) {
@@ -528,6 +564,7 @@
       } catch (e) { listDiv.innerHTML = '<div style="text-align:center; color:red; padding: 15px;">ดึงรายงานขัดข้อง</div>'; }
     }
 
+    // ================== User Manage ==================
     async function searchUser() {
       let mId = document.getElementById('txtSearchUser').value.trim(); if(!mId) return;
       try {
@@ -541,22 +578,25 @@
           document.getElementById('selChangeRole').value = (u.role === 'Superadmin') ? 'Admin' : u.role;
           document.getElementById('userInfoContainer').style.display = 'block';
         } else { alert("ไม่พบข้อมูลสมาชิก"); document.getElementById('userInfoContainer').style.display = 'none'; }
-      } catch (e) {}
+      } catch (e) { alert("เกิดข้อผิดพลาดในการค้นหา"); }
     }
 
     async function updateUserStatus(ns) {
       if(!selectedUserIdForManage) return;
       await _supabase.from('users').update({ status: ns }).eq('uid', selectedUserIdForManage);
-      alert(`อัปเดตสถานะสำเร็จ`); document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
+      alert(`อัปเดตสถานะสำเร็จ`); 
+      document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
     }
 
     async function updateUserRole() {
       if(!selectedUserIdForManage) return;
       let nr = document.getElementById('selChangeRole').value;
       await _supabase.from('users').update({ role: nr }).eq('uid', selectedUserIdForManage);
-      alert(`อัปเดตสิทธิ์สำเร็จ`); document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
+      alert(`อัปเดตสิทธิ์สำเร็จ`); 
+      document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
     }
     
+    // ================== Table Manage ==================
     async function loadTableList() {
       const l = document.getElementById('tableListContainer');
       const { data: t } = await _supabase.from('tables').select('*').order('created_at', { ascending: true });
@@ -588,6 +628,7 @@
 
     function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
 
+    // ================== Credit Manage ==================
     async function processCredit(type) {
       let tId = document.getElementById('txtTargetId').value.trim(); let amt = parseFloat(document.getElementById('txtAmount').value);
       if(!tId || !amt) return alert("กรอกข้อมูลให้ครบ"); if(!confirm(`ยืนยัน?`)) return;
@@ -595,12 +636,33 @@
         if(creditMode === 'table') {
           const { data: t } = await _supabase.from('tables').select('credit').eq('table_no', tId).single();
           await _supabase.from('tables').update({ credit: type==='deposit'?t.credit+amt:t.credit-amt }).eq('table_no', tId);
+          alert(`สำเร็จ โต๊ะ ${tId} เครดิตคงเหลือ: ฿${type==='deposit'?t.credit+amt:t.credit-amt}`);
         } else {
-          const { data: u } = await _supabase.from('users').select('uid, credit_balance').eq('member_id', tId).single();
-          await _supabase.from('users').update({ credit_balance: type==='deposit'?u.credit_balance+amt:u.credit_balance-amt }).eq('uid', u.uid);
+          // ดักว่า User Active หรือเปล่าถึงยอมเติมเงิน
+          const { data: u } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit').eq('member_id', tId).single();
+          if(!u) throw new Error("ไม่พบรหัสสมาชิกนี้ในระบบ");
+          if(u.status !== 'Active') throw new Error(`ไม่สามารถทำรายการได้! บัญชีลูกค้ารหัส ${tId} ถูกระงับหรือยังไม่อนุมัติ (Inactive)`);
+
+          let newBal = type === 'deposit' ? u.credit_balance + amount : u.credit_balance - amount;
+          
+          let updateData = { credit_balance: newBal };
+          if (type === 'deposit') { updateData.total_deposit = (u.total_deposit || 0) + amount; }
+          
+          await _supabase.from('users').update(updateData).eq('uid', u.uid);
+          
+          // ส่งบอก GAS ให้แจ้งกลุ่มและหาลูกค้า
+          notifyGAS('adminTopupComplete', { 
+             adminName: currentAdminName, 
+             type: type, 
+             targetUid: u.uid, 
+             targetMemberId: tId, 
+             amount: amount, 
+             newBalance: newBal 
+          });
+          alert(`ทำรายการสำเร็จ! ระบบได้ส่งแจ้งเตือนกลับหาลูกค้าแล้ว`);
         }
-        alert(`สำเร็จ`); document.getElementById('txtAmount').value = ""; loadTableList();
-      } catch(e){ alert("ไม่พบข้อมูลลูกค้านี้"); }
+        document.getElementById('txtAmount').value = ""; loadTableList();
+      } catch(e){ alert(e.message); }
     }
 
     function setCreditMode(m) {
@@ -611,6 +673,7 @@
       document.getElementById('targetLabel').innerText = m==='table'?"หมายเลขโต๊ะ":"รหัสลูกค้า (M000X)"; 
     }
 
+    // ================== Cancle Bet ==================
     async function cancelBet() {
       let bId = document.getElementById('txtBetId').value.trim(); if(!confirm("ยืนยันยกเลิกและคืนเครดิต?")) return;
       try {
@@ -623,6 +686,7 @@
       } catch(e) { alert("ยกเลิกไม่สำเร็จ"); }
     }
 
+    // ================== Settings ==================
     async function loadSettings() {
       const { data: s } = await _supabase.from('system_settings').select('*').eq('id', 1).single(); 
       if(s) { 
