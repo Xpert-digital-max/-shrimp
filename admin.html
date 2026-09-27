@@ -25,14 +25,12 @@
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; color: var(--blue-main); border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;}
     
-    /* ดีไซน์คุมรอบตามภาพตัวอย่าง */
     .admin-round-card { background: var(--bg-panel); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; margin-bottom: 15px; }
     .live-dot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .live-indicator { background: rgba(16, 185, 129, 0.2); color: var(--green-main); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
     .round-title-text { font-size: 1.2rem; font-weight: 700; color: white; }
     .round-sub-info { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; }
 
-    /* สถิติ 2 ฝั่ง (คู่ / คี่) แบบ Admin */
     .admin-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
     .admin-stat-box { padding: 15px 12px; border-radius: 12px; text-align: left; }
     .admin-stat-box.even { background: #1a1e2f; border: 1px solid rgba(59, 130, 246, 0.3); }
@@ -55,13 +53,21 @@
     .btn-yellow { background: var(--yellow-main); }
     .btn-blue { background: var(--blue-main); }
     .btn-red { background: var(--red-main); }
-    .btn-orange { background: #ff6b6b; } /* สีปุ่มตัดรอบตามภาพตัวอย่าง */
+    .btn-orange { background: #ff6b6b; }
 
     .switch-mode { display: flex; background: #0f111a; border-radius: 8px; padding: 4px; margin-bottom: 15px;}
     .switch-btn { flex: 1; text-align: center; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 0.9rem; color: var(--text-muted);}
     .switch-btn.active { background: #2a2d3d; color: white; }
     
     .hidden { display: none !important; }
+    
+    /* ส่วนการจัดการสิทธิ์ */
+    .user-info-box { background: #0f111a; border: 1px solid var(--card-border); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: none; }
+    .user-info-text { font-size: 0.9rem; margin-bottom: 5px; }
+    .badge-role { padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
+    .role-cust { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+    .role-op { background: rgba(59, 130, 246, 0.2); color: var(--blue-main); }
+    .role-admin { background: rgba(245, 158, 11, 0.2); color: var(--yellow-main); }
   </style>
 </head>
 <body>
@@ -92,7 +98,7 @@
 
     <div id="adminContentView" class="hidden">
       
-      <!-- ส่วนควบคุมรอบ (ปรับใหม่ตามภาพตัวอย่าง) -->
+      <!-- การควบคุมรอบ -->
       <div class="card">
         <div class="card-title" style="color: var(--yellow-main);"><i class="fa-solid fa-stopwatch"></i> ควบคุมรอบชั่งกุ้ง</div>
         
@@ -103,7 +109,7 @@
           </div>
           <div class="round-sub-info" id="adminRoundSubInfo">กำลังโหลดสถานะรอบ...</div>
 
-          <!-- สถิติยอดแทงสองฝั่ง (คู่ / คี่) -->
+          <!-- สถิติยอดแทงสองฝั่ง -->
           <div class="admin-stats-grid">
             <div class="admin-stat-box even">
               <div class="astat-label">คู่ • EVEN</div>
@@ -132,7 +138,7 @@
         </div>
       </div>
 
-      <!-- รายการแทงสดรายโต๊ะ (Real-time Bets Feed) -->
+      <!-- รายการแทงในรอบนี้ -->
       <div class="card">
         <div class="card-title" style="color: var(--blue-main);"><i class="fa-solid fa-list-check"></i> รายการแทงในรอบนี้</div>
         <div id="liveBetsFeedList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
@@ -167,6 +173,43 @@
         </div>
         <div id="roundReportList" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
           <div style="text-align: center; color: var(--text-muted); padding: 15px;">เลือกวันที่แล้วกดดูรายงาน</div>
+        </div>
+      </div>
+
+      <!-- จัดการสิทธิ์ลูกค้า/พนักงาน (ใหม่) -->
+      <div class="card" id="cardUserManage">
+        <div class="card-title" style="color: var(--blue-main);"><i class="fa-solid fa-users-gear"></i> จัดการสิทธิ์ลูกค้า/พนักงาน</div>
+        <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 15px;">
+          <input type="text" id="txtSearchUser" class="form-control" placeholder="พิมพ์รหัสสมาชิก เช่น M0001" style="flex: 2;">
+          <button class="btn btn-blue" style="flex: 1;" onclick="searchUser()"><i class="fa-solid fa-search"></i> ค้นหา</button>
+        </div>
+        
+        <div id="userInfoContainer" class="user-info-box">
+          <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">
+             <img id="uManagePic" src="https://via.placeholder.com/150" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+             <div>
+                <div id="uManageName" style="font-weight: bold; font-size: 1.1rem; color: white;">-</div>
+                <div class="user-info-text" style="color: var(--text-muted);">รหัส: <span id="uManageId">-</span></div>
+             </div>
+          </div>
+          
+          <div class="user-info-text">สถานะปัจจุบัน: <span id="uManageStatus" style="font-weight: bold;">-</span></div>
+          <div class="user-info-text" style="margin-bottom: 15px;">สิทธิ์การใช้งาน: <span id="uManageRoleBadge" class="badge-role">-</span></div>
+          
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+             <button class="btn btn-green" style="padding: 8px; font-size: 0.9rem;" onclick="updateUserStatus('Active')">เปิดใช้งาน (Active)</button>
+             <button class="btn btn-red" style="padding: 8px; font-size: 0.9rem;" onclick="updateUserStatus('Inactive')">ระงับ (Inactive)</button>
+          </div>
+          
+          <label style="display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px;">เปลี่ยนระดับสิทธิ์ (Role):</label>
+          <div style="display: flex; gap: 10px;">
+             <select id="selChangeRole" class="form-control" style="flex: 2; padding: 8px;">
+               <option value="Customer">Customer (ลูกค้าทั่วไป)</option>
+               <option value="Operator">Operator (พนักงาน)</option>
+               <option value="Admin">Admin (ผู้จัดการ)</option>
+             </select>
+             <button class="btn btn-blue" style="flex: 1; padding: 8px;" onclick="updateUserRole()">บันทึกสิทธิ์</button>
+          </div>
         </div>
       </div>
 
@@ -248,12 +291,13 @@
     let currentOpId = ""; 
     let creditMode = "table";
     let currentUserRole = "Customer";
+    let selectedUserIdForManage = ""; // เก็บ UID ลูกค้าที่ค้นหาเจอ
 
     async function notifyGAS(action, payloadData) {
       try {
         const payload = { action: action, ...payloadData };
         fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-      } catch (e) { console.error(e); }
+      } catch (e) {}
     }
 
     async function initializeApp() {
@@ -285,9 +329,11 @@
           let roleBadge = (currentUserRole === 'Superadmin' || currentUserRole === 'Admin') ? "แอดมินบ่อ" : "พนักงาน (Operator)";
           document.getElementById('opProfile').innerHTML = `<i class="fa-solid fa-user-tie"></i> ${roleBadge}`;
           
+          // Operator จะไม่เห็นรายงาน, การจัดการสิทธิ์, และตั้งค่าบ่อ
           if (currentUserRole === 'Operator') {
             document.getElementById('cardReport').classList.add('hidden');
             document.getElementById('cardSettings').classList.add('hidden');
+            document.getElementById('cardUserManage').classList.add('hidden');
           } else {
             loadDailyReport();
             loadSettings();
@@ -299,6 +345,65 @@
       } catch (error) {}
     }
 
+    // ==========================================
+    // ระบบจัดการลูกค้า/พนักงาน
+    // ==========================================
+    async function searchUser() {
+      let mId = document.getElementById('txtSearchUser').value.trim();
+      if(!mId) { alert("กรุณาใส่รหัสสมาชิก"); return; }
+      
+      try {
+        const { data: u } = await _supabase.from('users').select('*').eq('member_id', mId).single();
+        if(u) {
+          selectedUserIdForManage = u.uid;
+          document.getElementById('uManagePic').src = u.profile_pic || 'https://via.placeholder.com/150';
+          document.getElementById('uManageName').innerText = u.display_name;
+          document.getElementById('uManageId').innerText = u.member_id;
+          
+          let stColor = u.status === 'Active' ? 'var(--green-main)' : 'var(--red-main)';
+          document.getElementById('uManageStatus').innerText = u.status;
+          document.getElementById('uManageStatus').style.color = stColor;
+          
+          let roleClass = 'role-cust';
+          if(u.role === 'Operator') roleClass = 'role-op';
+          else if(u.role === 'Admin' || u.role === 'Superadmin') roleClass = 'role-admin';
+          
+          document.getElementById('uManageRoleBadge').className = `badge-role ${roleClass}`;
+          document.getElementById('uManageRoleBadge').innerText = u.role;
+          
+          document.getElementById('selChangeRole').value = (u.role === 'Superadmin') ? 'Admin' : u.role;
+          document.getElementById('userInfoContainer').style.display = 'block';
+        } else {
+          alert("ไม่พบข้อมูลสมาชิกนี้ในระบบ");
+          document.getElementById('userInfoContainer').style.display = 'none';
+        }
+      } catch (e) { alert("เกิดข้อผิดพลาดในการค้นหา"); }
+    }
+
+    async function updateUserStatus(newStatus) {
+      if(!selectedUserIdForManage) return;
+      try {
+        await _supabase.from('users').update({ status: newStatus }).eq('uid', selectedUserIdForManage);
+        alert(`เปลี่ยนสถานะเป็น ${newStatus} เรียบร้อยแล้ว`);
+        searchUser(); // รีเฟรชข้อมูลโชว์ใหม่
+      } catch (e) { alert("อัปเดตไม่สำเร็จ"); }
+    }
+
+    async function updateUserRole() {
+      if(!selectedUserIdForManage) return;
+      let newRole = document.getElementById('selChangeRole').value;
+      if(!confirm(`ยืนยันการเปลี่ยนสิทธิ์ผู้ใช้นี้เป็น ${newRole} ใช่หรือไม่?`)) return;
+      try {
+        await _supabase.from('users').update({ role: newRole }).eq('uid', selectedUserIdForManage);
+        alert(`เปลี่ยนสิทธิ์เป็น ${newRole} เรียบร้อยแล้ว`);
+        searchUser(); 
+      } catch (e) { alert("อัปเดตสิทธิ์ไม่สำเร็จ"); }
+    }
+
+
+    // ==========================================
+    // Dashboard คุมรอบ และตารางแทง
+    // ==========================================
     async function fetchAdminDashboard() {
       try {
         const { data: round } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(1).single();
@@ -323,8 +428,8 @@
           document.getElementById('adminStatusBadge').innerHTML = statusHtml;
           document.getElementById('adminRoundSubInfo').innerText = subText;
 
-          // ดึงยอดแทงสดทั้ง 2 ฝั่ง และรายการบิล
-          const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', round.round_id).neq('status', 'Cancelled');
+          // ดึงยอดแทงสดและรายการบิล
+          const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', round.round_id).neq('status', 'Cancelled').order('created_at', { ascending: false });
           let evenAmt = 0, oddAmt = 0;
           let evenTables = new Set(), oddTables = new Set();
           let feedList = document.getElementById('liveBetsFeedList');
@@ -332,10 +437,9 @@
 
           if (bets && bets.length > 0) {
             bets.forEach(b => {
-              if (b.bet_type === 'คู่') { evenAmt += Number(b.amount); evenTables.add(b.table_no || b.uid); }
-              if (b.bet_type === 'คี่') { oddAmt += Number(b.amount); oddTables.add(b.table_no || b.uid); }
+              if (b.bet_type === 'คู่') { evenAmt += Number(b.amount); evenTables.add(b.table_no !== '-' ? b.table_no : b.uid); }
+              if (b.bet_type === 'คี่') { oddAmt += Number(b.amount); oddTables.add(b.table_no !== '-' ? b.table_no : b.uid); }
 
-              // สร้างรายการแทงโชว์ทีละบรรทัด
               let row = document.createElement('div');
               row.style.cssText = "background: #0f111a; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;";
               let typeColor = b.bet_type === 'คู่' ? 'var(--blue-main)' : 'var(--red-main)';
@@ -415,7 +519,9 @@
 
     function showQrCode(tableNo) {
       document.getElementById('qrTableNoDisplay').innerText = tableNo;
-      let liffUrl = `https://liff.line.me/${APP_CONFIG.LIFF_ID_PLAYER}?table=${tableNo}`;
+      // ให้แนบวันที่ปัจจุบันเข้าไปในลิงก์ด้วย เพื่อป้องกันการสวมรอยข้ามวัน
+      let todayDateStr = new Date().toISOString().split('T')[0]; 
+      let liffUrl = `https://liff.line.me/${APP_CONFIG.LIFF_ID_PLAYER}?table=${tableNo}&d=${todayDateStr}`;
       let qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(liffUrl)}`;
       document.getElementById('qrImage').src = qrImgUrl;
       document.getElementById('qrModal').classList.remove('hidden');
@@ -551,19 +657,6 @@
       }
     }
 
-    function setCreditMode(mode) {
-      creditMode = mode;
-      document.getElementById('creditModeTable').classList.remove('active');
-      document.getElementById('creditModePrivate').classList.remove('active');
-      if(mode === 'table') {
-        document.getElementById('creditModeTable').classList.add('active');
-        document.getElementById('targetLabel').innerText = "หมายเลขโต๊ะ";
-      } else {
-        document.getElementById('creditModePrivate').classList.add('active');
-        document.getElementById('targetLabel').innerText = "รหัสลูกค้า (เช่น M0001)";
-      }
-    }
-
     async function processCredit(type) {
       let targetId = document.getElementById('txtTargetId').value.trim();
       let amount = parseFloat(document.getElementById('txtAmount').value);
@@ -587,6 +680,19 @@
         document.getElementById('txtAmount').value = ""; 
         loadTableList();
       } catch (error) { alert("ข้อผิดพลาด: " + error.message); }
+    }
+
+    function setCreditMode(mode) {
+      creditMode = mode;
+      document.getElementById('creditModeTable').classList.remove('active');
+      document.getElementById('creditModePrivate').classList.remove('active');
+      if(mode === 'table') {
+        document.getElementById('creditModeTable').classList.add('active');
+        document.getElementById('targetLabel').innerText = "หมายเลขโต๊ะ";
+      } else {
+        document.getElementById('creditModePrivate').classList.add('active');
+        document.getElementById('targetLabel').innerText = "รหัสลูกค้า (เช่น M0001)";
+      }
     }
 
     async function cancelBet() {
