@@ -4,14 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>บอร์ดสด - บ่อตกกุ้ง</title>
-  
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- เพิ่มบรรทัดนี้เข้ามาแก้บั๊กจอขาว -->
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script> 
-  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap');
     
@@ -20,15 +15,9 @@
       --blue-main: #3b82f6; --red-main: #ef4444; --green-main: #10b981; --yellow-main: #f59e0b;
       --text-main: #ffffff; --text-muted: #94a3b8;
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; align-items: center; -webkit-font-smoothing: antialiased; }
-
-    #loadingScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
-    .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--blue-main); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .dashboard-container { background: var(--card-bg); border: 1px solid var(--card-border); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease; display: none; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; -webkit-font-smoothing: antialiased; }
+    .dashboard-container { background: var(--card-bg); border: 1px solid var(--card-border); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease; }
     .top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); }
     .window-controls { display: flex; gap: 8px; }
     .dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -38,7 +27,6 @@
     .live-dot { width: 8px; height: 8px; background: var(--green-main); border-radius: 50%; box-shadow: 0 0 10px var(--green-main); }
     .closed-badge { background: rgba(239, 68, 68, 0.2); color: var(--red-main); }
     .closed-badge .live-dot { background: var(--red-main); box-shadow: 0 0 10px var(--red-main); }
-
     .header-info { display: flex; justify-content: space-between; align-items: center; }
     .round-id { font-weight: 800; color: white; }
     .round-status { color: var(--text-muted); }
@@ -46,7 +34,6 @@
     .timer-label { color: var(--text-muted); }
     .timer-value { font-weight: 800; color: var(--yellow-main); font-family: monospace; line-height: 1; }
     .timer-red { color: var(--red-main); }
-
     .cards-grid { display: grid; grid-template-columns: 1fr 1fr; }
     .card { border: 1px solid var(--card-border); border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
     .card.even { background: #101528; border-color: rgba(59, 130, 246, 0.35); box-shadow: inset 0 0 25px rgba(59, 130, 246, 0.08); }
@@ -55,17 +42,14 @@
     .card.even .card-title { color: var(--blue-main); } .card.odd .card-title { color: var(--red-main); }
     .card-amount { font-weight: 800; color: white; letter-spacing: -1px; }
     .card-stats { color: var(--text-muted); }
-
     .progress-bar { width: 100%; background: #1e2233; border-radius: 6px; overflow: hidden; }
     .progress-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
     .card.even .progress-fill { background: var(--blue-main); box-shadow: 0 0 12px var(--blue-main); }
     .card.odd .progress-fill { background: var(--red-main); box-shadow: 0 0 12px var(--red-main); }
-
     .bottom-section { display: flex; }
     .summary-card, .last-result-card { background: #0d0f18; border: 1px solid var(--card-border); border-radius: 16px; display: flex; justify-content: space-between; align-items: center; }
     .summary-label { color: var(--text-muted); }
     .summary-total { font-weight: 800; color: var(--green-main); }
-
     .last-result-left { display: flex; align-items: center; }
     .scale-icon { color: var(--text-muted); }
     .last-result-text { color: var(--text-muted); }
@@ -78,35 +62,71 @@
     @media (min-width: 769px) {
       body { padding: 2vh 2vw; background: radial-gradient(circle at center, #131726 0%, #08090f 100%); }
       .dashboard-container { width: 96vw; max-width: 1550px; aspect-ratio: 16 / 9; max-height: 92vh; border-radius: 24px; padding: 30px 40px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7); }
-      .top-bar { padding-bottom: 16px; } .title-area { font-size: 1.5rem; } .live-badge { padding: 6px 18px; font-size: 1.1rem; } .live-dot { width: 10px; height: 10px; }
-      .header-info { margin: 15px 0 20px 0; } .round-id { font-size: 2.8rem; } .round-status { font-size: 1.3rem; margin-top: 4px; } .timer-label { font-size: 1.1rem; margin-bottom: 6px; } .timer-value { font-size: 4.2rem; }
-      .cards-grid { gap: 24px; margin-bottom: 22px; flex: 1; } .card { padding: 30px; } .card-title { font-size: 1.8rem; margin-bottom: 10px; } .card-amount { font-size: 5rem; margin-bottom: 15px; } .card-stats { font-size: 1.3rem; margin-bottom: 18px; } .progress-bar { height: 12px; }
-      .bottom-section { flex-direction: row; gap: 20px; } .summary-card, .last-result-card { flex: 1; padding: 24px 30px; } .summary-label { font-size: 1.4rem; } .summary-total { font-size: 3rem; } .last-result-left { gap: 20px; } .scale-icon { font-size: 3rem; } .last-result-text { font-size: 1.1rem; margin-bottom: 4px; } .last-result-weight { font-size: 2.4rem; } .winner-badge { padding: 10px 30px; font-size: 1.5rem; }
+      .top-bar { padding-bottom: 16px; }
+      .title-area { font-size: 1.5rem; }
+      .live-badge { padding: 6px 18px; font-size: 1.1rem; }
+      .live-dot { width: 10px; height: 10px; }
+      .header-info { margin: 15px 0 20px 0; }
+      .round-id { font-size: 2.8rem; }
+      .round-status { font-size: 1.3rem; margin-top: 4px; }
+      .timer-label { font-size: 1.1rem; margin-bottom: 6px; }
+      .timer-value { font-size: 4.2rem; }
+      .cards-grid { gap: 24px; margin-bottom: 22px; flex: 1; }
+      .card { padding: 30px; }
+      .card-title { font-size: 1.8rem; margin-bottom: 10px; }
+      .card-amount { font-size: 5rem; margin-bottom: 15px; }
+      .card-stats { font-size: 1.3rem; margin-bottom: 18px; }
+      .progress-bar { height: 12px; }
+      .bottom-section { flex-direction: row; gap: 20px; }
+      .summary-card, .last-result-card { flex: 1; padding: 24px 30px; }
+      .summary-label { font-size: 1.4rem; }
+      .summary-total { font-size: 3rem; }
+      .last-result-left { gap: 20px; }
+      .scale-icon { font-size: 3rem; }
+      .last-result-text { font-size: 1.1rem; margin-bottom: 4px; }
+      .last-result-weight { font-size: 2.4rem; }
+      .winner-badge { padding: 10px 30px; font-size: 1.5rem; }
     }
+
     @media (max-width: 768px) {
       body { padding: 12px; align-items: flex-start; }
       .dashboard-container { width: 100%; max-width: 480px; border-radius: 18px; padding: 18px 16px; gap: 16px; }
-      .top-bar { padding-bottom: 12px; } .title-area { font-size: 1rem; } .live-badge { padding: 4px 10px; font-size: 0.8rem; } .live-dot { width: 7px; height: 7px; }
-      .header-info { margin-bottom: 0; } .round-id { font-size: 1.4rem; } .round-status { font-size: 0.85rem; } .timer-label { font-size: 0.75rem; margin-bottom: 2px; } .timer-value { font-size: 2rem; }
-      .cards-grid { gap: 12px; } .card { padding: 16px 14px; border-radius: 14px; } .card-title { font-size: 0.95rem; margin-bottom: 6px; } .card-amount { font-size: 1.8rem; margin-bottom: 8px; } .card-stats { font-size: 0.8rem; margin-bottom: 10px; } .progress-bar { height: 6px; }
-      .bottom-section { flex-direction: column; gap: 12px; } .summary-card, .last-result-card { padding: 14px 16px; border-radius: 12px; } .summary-label { font-size: 0.95rem; } .summary-total { font-size: 1.5rem; } .last-result-left { gap: 12px; } .scale-icon { font-size: 1.8rem; } .last-result-text { font-size: 0.8rem; } .last-result-weight { font-size: 1.3rem; } .winner-badge { padding: 6px 14px; font-size: 0.95rem; }
+      .top-bar { padding-bottom: 12px; }
+      .title-area { font-size: 1rem; }
+      .live-badge { padding: 4px 10px; font-size: 0.8rem; }
+      .live-dot { width: 7px; height: 7px; }
+      .header-info { margin-bottom: 0; }
+      .round-id { font-size: 1.4rem; }
+      .round-status { font-size: 0.85rem; }
+      .timer-label { font-size: 0.75rem; margin-bottom: 2px; }
+      .timer-value { font-size: 2rem; }
+      .cards-grid { gap: 12px; }
+      .card { padding: 16px 14px; border-radius: 14px; }
+      .card-title { font-size: 0.95rem; margin-bottom: 6px; }
+      .card-amount { font-size: 1.8rem; margin-bottom: 8px; }
+      .card-stats { font-size: 0.8rem; margin-bottom: 10px; }
+      .progress-bar { height: 6px; }
+      .bottom-section { flex-direction: column; gap: 12px; }
+      .summary-card, .last-result-card { padding: 14px 16px; border-radius: 12px; }
+      .summary-label { font-size: 0.95rem; }
+      .summary-total { font-size: 1.5rem; }
+      .last-result-left { gap: 12px; }
+      .scale-icon { font-size: 1.8rem; }
+      .last-result-text { font-size: 0.8rem; }
+      .last-result-weight { font-size: 1.3rem; }
+      .winner-badge { padding: 6px 14px; font-size: 0.95rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Loading Screen -->
-  <div id="loadingScreen">
-    <div class="spinner"></div>
-    <div id="loadingText" style="color: var(--text-muted); font-size: 1.2rem;">กำลังเชื่อมต่อระบบ...</div>
-  </div>
-
-  <div class="dashboard-container" id="mainDashboard">
+  <div class="dashboard-container">
     <div class="top-bar">
       <div class="window-controls"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
       <div class="title-area">🦐 บอร์ดสด — บ่อตกกุ้ง</div>
       <div class="live-badge" id="mainLiveBadge"><div class="live-dot"></div> <span id="mainLiveText">LIVE</span></div>
     </div>
+
     <div class="header-info">
       <div>
         <div class="round-id" id="roundIdDisplay">รอบ -</div>
@@ -117,88 +137,147 @@
         <div class="timer-value" id="timerDisplay">--:--</div>
       </div>
     </div>
+
     <div class="cards-grid">
       <div class="card even">
-        <div><div class="card-title">คู่ · EVEN</div><div class="card-amount" id="evenAmount">฿0</div><div class="card-stats" id="evenCount">0 โต๊ะ/บิล</div></div>
+        <div>
+          <div class="card-title">คู่ · EVEN</div>
+          <div class="card-amount" id="evenAmount">฿0</div>
+          <div class="card-stats" id="evenCount">0 โต๊ะ/บิล</div>
+        </div>
         <div class="progress-bar"><div class="progress-fill" id="evenProgress" style="width: 0%;"></div></div>
       </div>
       <div class="card odd">
-        <div><div class="card-title">คี่ · ODD</div><div class="card-amount" id="oddAmount">฿0</div><div class="card-stats" id="oddCount">0 โต๊ะ/บิล</div></div>
+        <div>
+          <div class="card-title">คี่ · ODD</div>
+          <div class="card-amount" id="oddAmount">฿0</div>
+          <div class="card-stats" id="oddCount">0 โต๊ะ/บิล</div>
+        </div>
         <div class="progress-bar"><div class="progress-fill" id="oddProgress" style="width: 0%;"></div></div>
       </div>
     </div>
+
     <div class="bottom-section">
-      <div class="summary-card"><div class="summary-label">ยอดเดิมพันรวมในบ่อ</div><div class="summary-total" id="totalAmount">฿0</div></div>
+      <div class="summary-card">
+        <div class="summary-label">ยอดเดิมพันรวมในบ่อ</div>
+        <div class="summary-total" id="totalAmount">฿0</div>
+      </div>
       <div class="last-result-card">
-        <div class="last-result-left"><i class="fa-solid fa-scale-balanced scale-icon"></i><div><div class="last-result-text">ผลชั่งกุ้งรอบล่าสุด</div><div class="last-result-weight" id="lastWeight">รอข้อมูล...</div></div></div>
+        <div class="last-result-left">
+          <i class="fa-solid fa-scale-balanced scale-icon"></i>
+          <div>
+            <div class="last-result-text">ผลชั่งกุ้งรอบล่าสุด</div>
+            <div class="last-result-weight" id="lastWeight">รอข้อมูล...</div>
+          </div>
+        </div>
         <div class="winner-badge gray" id="lastWinner">-</div>
       </div>
     </div>
   </div>
 
   <script>
-    if (typeof APP_CONFIG === 'undefined') {
-       document.getElementById('loadingText').innerText = "ข้อผิดพลาด: ไม่พบไฟล์ config.js";
-       document.getElementById('loadingText').style.color = "var(--red-main)";
-    } else {
-       initDashboard();
-    }
-
-    let _supabase; let targetEndTimeMs = null; let isRoundOpen = false; let isFetching = false;
+    const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+    let targetEndTimeMs = null;
+    let isRoundOpen = false;
 
     function formatMoney(amount) { return '฿' + Number(amount || 0).toLocaleString('th-TH'); }
 
-    async function initDashboard() {
-      // ไม่ต้องล๊อกอินด้วย LIFF ในบอร์ดสดเพื่อไม่ให้ติด Error
-      _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-      await fetchLiveBoard();
-      document.getElementById('loadingScreen').style.display = 'none';
-      document.getElementById('mainDashboard').style.display = 'flex';
-      scheduleNextFetch();
-      startTimerLoop();
-    }
-
-    function scheduleNextFetch() {
-      setTimeout(async () => { await fetchLiveBoard(); scheduleNextFetch(); }, 3000); 
-    }
-
     async function fetchLiveBoard() {
-      if(isFetching) return; isFetching = true;
       try {
-        const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(2);
+        const { data: rounds } = await _supabase.from('rounds').select('*').order('created_at', { ascending: false }).limit(2);
         if (rounds && rounds.length > 0) {
           const currentRound = rounds[0];
           document.getElementById('roundIdDisplay').innerText = `รอบ ${currentRound.round_id}`;
           targetEndTimeMs = currentRound.end_time_ms || 0;
-          let now = new Date().getTime(); let badge = document.getElementById('mainLiveBadge'); let statusText = document.getElementById('statusDisplay');
           
-          if (currentRound.status === 'Open' && now < targetEndTimeMs) { statusText.innerText = `เปิดรับแทง`; statusText.style.color = "var(--green-main)"; badge.className = "live-badge"; document.getElementById('mainLiveText').innerText = "LIVE"; isRoundOpen = true; } 
-          else if (currentRound.status === 'Open' || currentRound.status === 'Closed') { statusText.innerText = `ปิดรับแทง (รอผลชั่งกุ้ง)`; statusText.style.color = "var(--red-main)"; badge.className = "live-badge closed-badge"; document.getElementById('mainLiveText').innerText = "CLOSED"; isRoundOpen = false; }
-          else if (currentRound.status === 'Ended') { statusText.innerText = `จบรอบแล้ว`; statusText.style.color = "var(--text-muted)"; badge.className = "live-badge closed-badge"; document.getElementById('mainLiveText').innerText = "OFFLINE"; isRoundOpen = false; targetEndTimeMs = 0; }
+          let now = new Date().getTime();
+          let badge = document.getElementById('mainLiveBadge');
+          let statusText = document.getElementById('statusDisplay');
+          
+          if (currentRound.status === 'Open' && now < targetEndTimeMs) {
+            statusText.innerText = `เปิดรับแทง`;
+            statusText.style.color = "var(--green-main)";
+            badge.className = "live-badge"; document.getElementById('mainLiveText').innerText = "LIVE";
+            isRoundOpen = true;
+          } 
+          else if (currentRound.status === 'Open' || currentRound.status === 'Closed') {
+            statusText.innerText = `รอแอดมินตัดผลชั่งกุ้ง`;
+            statusText.style.color = "var(--red-main)";
+            badge.className = "live-badge closed-badge"; document.getElementById('mainLiveText').innerText = "CLOSED";
+            isRoundOpen = false;
+          }
+          else if (currentRound.status === 'Ended') {
+            statusText.innerText = `จบรอบแล้ว`;
+            statusText.style.color = "var(--text-muted)";
+            badge.className = "live-badge closed-badge"; document.getElementById('mainLiveText').innerText = "OFFLINE";
+            isRoundOpen = false; targetEndTimeMs = 0;
+          }
 
-          if (currentRound.status === 'Ended') { document.getElementById('lastWeight').innerText = `${currentRound.weight} กรัม`; document.getElementById('lastWinner').className = `winner-badge ${currentRound.result === 'คู่' ? 'even' : 'odd'}`; document.getElementById('lastWinner').innerText = `${currentRound.result} ชนะ!`; } 
-          else if (rounds.length > 1 && rounds[1].status === 'Ended') { document.getElementById('lastWeight').innerText = `${rounds[1].weight} กรัม`; document.getElementById('lastWinner').className = `winner-badge ${rounds[1].result === 'คู่' ? 'even' : 'odd'}`; document.getElementById('lastWinner').innerText = `${rounds[1].result} ชนะ!`; } 
-          else { document.getElementById('lastWeight').innerText = `รอข้อมูล...`; document.getElementById('lastWinner').className = `winner-badge gray`; document.getElementById('lastWinner').innerText = `-`; }
+          if (currentRound.status === 'Ended') {
+            document.getElementById('lastWeight').innerText = `${currentRound.weight} กรัม`;
+            document.getElementById('lastWinner').className = `winner-badge ${currentRound.result === 'คู่' ? 'even' : 'odd'}`;
+            document.getElementById('lastWinner').innerText = `${currentRound.result} ชนะ!`;
+          } else if (rounds.length > 1 && rounds[1].status === 'Ended') {
+            document.getElementById('lastWeight').innerText = `${rounds[1].weight} กรัม`;
+            document.getElementById('lastWinner').className = `winner-badge ${rounds[1].result === 'คู่' ? 'even' : 'odd'}`;
+            document.getElementById('lastWinner').innerText = `${rounds[1].result} ชนะ!`;
+          } else {
+            document.getElementById('lastWeight').innerText = `รอข้อมูล...`;
+            document.getElementById('lastWinner').className = `winner-badge gray`;
+            document.getElementById('lastWinner').innerText = `-`;
+          }
 
           const { data: bets } = await _supabase.from('bets').select('bet_type, amount, table_no, uid').eq('round_id', currentRound.round_id).neq('status', 'Cancelled');
-          let ea = 0, oa = 0, ta = 0; let et = new Set(), ot = new Set();
-          if (bets) { bets.forEach(b => { ta += Number(b.amount); let iden = (b.table_no && b.table_no !== '-') ? b.table_no : b.uid; if (b.bet_type === 'คู่') { ea += Number(b.amount); et.add(iden); } if (b.bet_type === 'คี่') { oa += Number(b.amount); ot.add(iden); } }); }
-          document.getElementById('evenAmount').innerText = formatMoney(ea); document.getElementById('oddAmount').innerText = formatMoney(oa); document.getElementById('totalAmount').innerText = formatMoney(ta);
-          document.getElementById('evenCount').innerText = `${et.size} โต๊ะ/บิล`; document.getElementById('oddCount').innerText = `${ot.size} โต๊ะ/บิล`;
-          document.getElementById('evenProgress').style.width = `${ta > 0 ? (ea/ta)*100 : 0}%`; document.getElementById('oddProgress').style.width = `${ta > 0 ? (oa/ta)*100 : 0}%`;
+          let evenAmt = 0, oddAmt = 0, totalAmt = 0;
+          let evenTables = new Set(), oddTables = new Set();
+          
+          if (bets) {
+            bets.forEach(b => {
+              totalAmt += Number(b.amount);
+              let identifier = (b.table_no && b.table_no !== '-') ? b.table_no : b.uid;
+              if (b.bet_type === 'คู่') { evenAmt += Number(b.amount); evenTables.add(identifier); }
+              if (b.bet_type === 'คี่') { oddAmt += Number(b.amount); oddTables.add(identifier); }
+            });
+          }
+
+          document.getElementById('evenAmount').innerText = formatMoney(evenAmt);
+          document.getElementById('oddAmount').innerText = formatMoney(oddAmt);
+          document.getElementById('totalAmount').innerText = formatMoney(totalAmt);
+          document.getElementById('evenCount').innerText = `${evenTables.size} โต๊ะ/บิล`;
+          document.getElementById('oddCount').innerText = `${oddTables.size} โต๊ะ/บิล`;
+
+          let evenPct = totalAmt > 0 ? (evenAmt / totalAmt) * 100 : 0;
+          let oddPct = totalAmt > 0 ? (oddAmt / totalAmt) * 100 : 0;
+          document.getElementById('evenProgress').style.width = `${evenPct}%`;
+          document.getElementById('oddProgress').style.width = `${oddPct}%`;
         }
-      } catch (e) {} finally { isFetching = false; }
+      } catch (error) {}
     }
 
-    function startTimerLoop() {
-      setInterval(() => {
-        let display = document.getElementById('timerDisplay');
-        if (!isRoundOpen || !targetEndTimeMs) { display.innerText = "00:00"; display.classList.add('timer-red'); return; }
-        let distance = targetEndTimeMs - new Date().getTime();
-        if (distance <= 0) { display.innerText = "00:00"; display.classList.add('timer-red'); isRoundOpen = false; } 
-        else { let m = Math.floor((distance % 3600000) / 60000); let s = Math.floor((distance % 60000) / 1000); display.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; display.classList.remove('timer-red'); }
-      }, 1000);
-    }
+    setInterval(() => {
+      let display = document.getElementById('timerDisplay');
+      if (!isRoundOpen || !targetEndTimeMs) {
+        display.innerText = "00:00";
+        display.classList.add('timer-red');
+        return;
+      }
+      let now = new Date().getTime();
+      let distance = targetEndTimeMs - now;
+      if (distance <= 0) {
+        display.innerText = "00:00";
+        display.classList.add('timer-red');
+        isRoundOpen = false;
+        fetchLiveBoard(); 
+      } else {
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        display.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        display.classList.remove('timer-red');
+      }
+    }, 1000);
+
+    fetchLiveBoard();
+    setInterval(fetchLiveBoard, 2000); 
   </script>
 </body>
 </html>
