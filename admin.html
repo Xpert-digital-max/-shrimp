@@ -80,12 +80,13 @@
     .aff-val.money { color: var(--green-main); }
     .qr-container { background: white; padding: 15px; border-radius: 12px; display: inline-block; margin: 10px auto; }
     
-    /* สไตล์สำหรับ Print */
+    /* ========================================== */
+    /* สไตล์สำหรับ Print แก้ไขบั๊กตกขอบและซ้อนทับกัน */
+    /* ========================================== */
     @media print {
-        @page { margin: 1cm; } /* ตั้งขอบกระดาษ A4 มาตรฐาน */
         body { background: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
         .no-print { display: none !important; }
-        .print-only { display: block !important; }
+        
         .card, .container { box-shadow: none !important; border: none !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
         
         /* สไตล์สำหรับกระดาษ A4 */
@@ -98,9 +99,9 @@
         
         /* สไตล์สำหรับใบเสร็จความร้อน 80mm */
         .layout-slip { 
-            width: 72mm; /* ความกว้างกระดาษ 80mm ลบขอบแล้วเหลือพื้นที่เขียนประมาณ 72mm */
+            width: 72mm; /* ความกว้างกระดาษ 80mm ลบระยะขอบให้เหลือเนื้อหาประมาณ 72mm */
             margin: 0 auto;
-            font-family: 'Courier New', Courier, monospace; /* ใช้ฟอนต์แบบใบเสร็จ */
+            font-family: 'Courier New', Courier, monospace;
             font-size: 12px;
             color: black;
         }
@@ -296,7 +297,7 @@
     </div>
 
     <!-- ============================================== -->
-    <!-- View 2: รายงานผล และสั่งพิมพ์ (ซ่อนไว้ก่อน) -->
+    <!-- View 2: รายงานผล และสั่งพิมพ์ -->
     <!-- ============================================== -->
     <div id="reportContentView" class="hidden no-print">
       
@@ -360,7 +361,6 @@
           <p style="margin-top: 0; color: #555;">วันที่: <span id="printDateA4"></span> | พิมพ์โดย: <span id="printAdminNameA4"></span></p>
       </div>
       
-      <!-- ส่วนที่ 1: สรุปยอดการเงินบัญชีบ่อ -->
       <h3>1. สรุปผลกำไร-ขาดทุน (P&L)</h3>
       <table class="report-table">
           <tr><th style="width: 70%;">รายการ</th><th class="text-right">จำนวนเงิน (บาท)</th></tr>
@@ -371,7 +371,6 @@
           <tr class="grand-total"><td>กำไรสุทธิของบ่อ (Net Profit)</td><td class="text-right" id="p_netProfitA4">0</td></tr>
       </table>
       
-      <!-- ส่วนที่ 2: สรุปการฝาก-ถอนของแอดมิน -->
       <h3>2. สรุปรายการฝาก-ถอนเครดิต</h3>
       <table class="report-table">
           <tr><th style="width: 40%;">ประเภท</th><th style="width: 30%;">ผู้ทำรายการ</th><th class="text-right" style="width: 15%;">จำนวนครั้ง</th><th class="text-right" style="width: 15%;">รวมเป็นเงิน</th></tr>
@@ -380,7 +379,6 @@
           <tr class="grand-total"><td>ยอดเงินลิ้นชัก (เติม - ถอน)</td><td></td><td></td><td class="text-right" id="p_drawerNetA4">0</td></tr>
       </table>
       
-      <!-- ส่วนที่ 3: สถิติการออกรางวัล -->
       <h3>3. สถิติรอบชั่งกุ้ง</h3>
       <table class="report-table">
           <tr><th style="width: 80%;">สถิติ</th><th class="text-right">จำนวนรอบ</th></tr>
@@ -457,7 +455,6 @@
     }
 
     async function initializeApp() {
-      // โหลดวันที่ลงรายงาน อัตโนมัติ (แก้ Timezone เป็นเวลาไทย)
       let d = new Date();
       let year = d.getFullYear();
       let month = String(d.getMonth() + 1).padStart(2, '0');
@@ -489,7 +486,7 @@
                  let t_type_code = dataParts[2];
                  let t_type_th = (t_type_code === 'w') ? 'ถอนเงิน' : 'ฝากเงิน';
                  
-                 switchAdminTab('control'); // เด้งมาหน้าแรก
+                 switchAdminTab('control');
                  setCreditMode('private');
                  document.getElementById('txtTargetId').value = t_mid;
                  document.getElementById('txtAmount').value = t_amt;
@@ -529,16 +526,15 @@
           document.getElementById('opProfile').innerHTML = `<i class="fa-solid fa-user-tie"></i> ${roleBadge}`;
           
           if (currentUserRole === 'Operator') {
-             // Operator ดูรายงานไม่ได้
              document.getElementById('tabReport').style.display = 'none';
              document.getElementById('cardUserManage').classList.add('hidden');
              document.getElementById('cardSettings').classList.add('hidden');
           } else {
              loadSettings();
-             generateReport(); // โหลดรายงานรอไว้
+             generateReport(); 
           }
           
-          switchAdminTab('control'); // เริ่มต้นที่หน้าควบคุมบ่อ
+          switchAdminTab('control'); 
           
           loadAffiliateStats(user); 
           fetchAdminDashboard(); 
@@ -548,7 +544,6 @@
       } catch (error) {}
     }
 
-    // ฟังก์ชันสลับเมนูด้านบน (Tab)
     function switchAdminTab(tab) {
         document.getElementById('tabControl').classList.remove('active');
         document.getElementById('tabReport').classList.remove('active');
@@ -561,13 +556,10 @@
             document.getElementById('tabReport').classList.add('active');
             document.getElementById('adminContentView').classList.add('hidden');
             document.getElementById('reportContentView').classList.remove('hidden');
-            generateReport(); // โหลดข้อมูลให้เป็นปัจจุบัน
+            generateReport(); 
         }
     }
 
-    // ==========================================
-    // ธุรกรรมการเงิน (ฝาก/ถอน) พร้อมบันทึกลง Transactions
-    // ==========================================
     async function processCredit(type) {
       let tId = document.getElementById('txtTargetId').value.trim(); 
       let amountStr = document.getElementById('txtAmount').value;
@@ -591,7 +583,6 @@
           
           await _supabase.from('tables').update({ credit: newBal }).eq('table_no', tId);
           
-          // บันทึก Log
           await _supabase.from('transactions').insert([{
               target_id: 'โต๊ะ ' + tId,
               type: type,
@@ -614,7 +605,6 @@
           if (type === 'deposit') { updateData.total_deposit = (u.total_deposit || 0) + amount; }
           await _supabase.from('users').update(updateData).eq('uid', u.uid);
           
-          // บันทึก Log
           await _supabase.from('transactions').insert([{
               target_id: tId,
               type: type,
@@ -638,10 +628,7 @@
       }
     }
 
-    // ==========================================
-    // ฟังก์ชันสร้างรายงานสรุปยอด และ เตรียม Print
-    // ==========================================
-    let cachedReportData = {}; // เก็บค่าไว้สำหรับสั่งปริ้น
+    let cachedReportData = {}; 
 
     async function generateReport() {
       if (currentUserRole === 'Operator') return; 
@@ -649,19 +636,17 @@
       const listDiv = document.getElementById('roundReportList');
       listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">กำลังคำนวณรายงาน...</div>';
       
-      let selDate = document.getElementById('repDateSelector').value; // เช่น 2026-09-28
+      let selDate = document.getElementById('repDateSelector').value; 
       if(!selDate) return;
       
       let parts = selDate.split('-');
       let yy = parts[0].substring(2); let mm = parts[1]; let dd = parts[2];
-      let prefix = `R-${yy}${mm}${dd}-`; // เพื่อหารอบของวันนี้
+      let prefix = `R-${yy}${mm}${dd}-`; 
       
-      // หาขอบเขตเวลา (Start / End ของวันที่เลือก แบบ Local Timezone)
       let startD = new Date(selDate); startD.setHours(0,0,0,0);
       let endD = new Date(selDate); endD.setHours(23,59,59,999);
       
       try {
-        // 1. ดึงข้อมูลรอบ (Rounds) ของวันนี้
         const { data: rounds } = await _supabase.from('rounds')
         .select('*')
         .like('round_id', `${prefix}%`)
@@ -694,7 +679,6 @@
            listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ยังไม่มีการออกรอบในวันที่เลือก</div>'; 
         }
 
-        // 2. ดึงข้อมูล ธุรกรรมการเงิน (ฝาก-ถอน) ของวันที่เลือก
         const { data: tx } = await _supabase.from('transactions')
         .select('*')
         .gte('created_at', startD.toISOString())
@@ -708,7 +692,6 @@
             });
         }
 
-        // อัปเดตหน้าจอ UI
         document.getElementById('repTotalDeposit').innerText = `฿${tDep.toLocaleString()}`;
         document.getElementById('repTotalWithdraw').innerText = `฿${tWd.toLocaleString()}`;
         document.getElementById('repGrossBet').innerText = `฿${gGross.toLocaleString()}`; 
@@ -717,7 +700,6 @@
         document.getElementById('repNetProfit').innerText = `฿${gNet.toLocaleString()}`;
         document.getElementById('repNetProfit').style.color = gNet >= 0 ? 'var(--green-main)' : 'var(--red-main)';
         
-        // เก็บค่าลง Cache ไว้รอพิมพ์
         cachedReportData = {
             dateStr: `${dd}/${mm}/20${yy}`,
             grossBet: gGross,
@@ -737,7 +719,7 @@
       }
     }
 
-    // ฟังก์ชันสั่งพิมพ์ (Print)
+    // ฟังก์ชันสั่งพิมพ์ (Print) แก้ไขแล้วให้กระดาษ 80mm กับ A4 แยกกันชัดเจน
     function printReport(paperType) {
         if (!cachedReportData || Object.keys(cachedReportData).length === 0) {
             alert("กรุณารอข้อมูลโหลดให้เสร็จก่อนสั่งพิมพ์"); return;
@@ -745,6 +727,20 @@
         
         let rd = cachedReportData;
         let targetDivId = paperType === 'A4' ? 'printAreaA4' : 'printAreaSlip';
+        
+        // จัดการเรื่องขนาดหน้ากระดาษ (Page Size & Margin) สำหรับสั่งปริ้นด้วย JS
+        let styleSheet = document.getElementById('printPageStyle');
+        if(!styleSheet) {
+           styleSheet = document.createElement('style');
+           styleSheet.id = 'printPageStyle';
+           document.head.appendChild(styleSheet);
+        }
+        if (paperType === 'A4') {
+            styleSheet.innerHTML = "@media print { @page { size: A4; margin: 1cm; } }";
+        } else {
+            // สำหรับสลิป 80mm กำหนดให้หน้ากว้าง 80mm
+            styleSheet.innerHTML = "@media print { @page { size: 80mm auto; margin: 2mm 5mm; } }";
+        }
         
         // โยนข้อมูลลงใน Div PrintArea
         document.getElementById(`printDate${paperType}`).innerText = rd.dateStr;
@@ -768,8 +764,14 @@
         document.getElementById(`p_roundEven${paperType}`).innerText = rd.roundEven;
         document.getElementById(`p_roundOdd${paperType}`).innerText = rd.roundOdd;
         
-        // ซ่อนหน้าแอปหลัก และโชว์หน้า Print, จากนั้นสั่ง Print
+        // ซ่อนหน้าแอปหลัก
         document.getElementById('mainAppContainer').style.display = 'none';
+        
+        // ซ่อนพิมพ์เทมเพลตทั้งสองอันให้ชัวร์
+        document.getElementById('printAreaA4').style.display = 'none';
+        document.getElementById('printAreaSlip').style.display = 'none';
+        
+        // โชว์เฉพาะตัวที่ถูกเลือกพิมพ์
         document.getElementById(targetDivId).style.display = 'block';
         
         // รอแปบนึงให้ DOM อัปเดตแล้วค่อยเรียกหน้าต่างปรินต์
@@ -780,8 +782,19 @@
             document.getElementById(targetDivId).style.display = 'none';
         }, 500);
     }
-    
-    // ----------------------------------------------------
+
+    function sendReportToLine() {
+        if (!cachedReportData || Object.keys(cachedReportData).length === 0) {
+            alert("กรุณารอโหลดข้อมูลก่อน หรือ ไม่มีข้อมูลในวันนี้ครับ");
+            return;
+        }
+        if(!confirm(`ยืนยันการส่งรายงานสรุปยอด วันที่ ${cachedReportData.dateStr} เข้ากลุ่ม LINE?`)) return;
+        
+        let reportDataWithAdmin = { ...cachedReportData, adminName: currentAdminName };
+        
+        notifyGAS('sendDailyReport', { reportData: reportDataWithAdmin });
+        alert("ส่งรายงานเข้า LINE เรียบร้อยแล้ว!");
+    }
 
     function startAdminTimer() {
       setInterval(() => {
@@ -972,7 +985,7 @@
         }
         
         alert(`ตัดผลสำเร็จ! ผลคือ: ${res} (ชนะ ${winCount} บิล)`); 
-        document.getElementById('txtShrimpWeight').value = '';
+        document.getElementById('txtShrWeight').value = '';
         
       } catch (e) { 
         alert("เกิดข้อผิดพลาดในการตัดผล: " + e.message); 
@@ -984,155 +997,6 @@
             generateReport(); // รีเฟรชหน้ารายงานด้วยถ้ากำลังเปิดดูอยู่
         }
       }
-    }
-
-    function setCreditMode(m) {
-      creditMode = m; 
-      document.getElementById('creditModeTable').classList.remove('active'); 
-      document.getElementById('creditModePrivate').classList.remove('active'); 
-      document.getElementById(m==='table'?'creditModeTable':'creditModePrivate').classList.add('active'); 
-      document.getElementById('targetLabel').innerText = m==='table'?"หมายเลขโต๊ะ":"รหัสลูกค้า (M000X)"; 
-    }
-
-    async function cancelBet() {
-      let bId = document.getElementById('txtBetId').value.trim(); if(!confirm("ยืนยันยกเลิกและคืนเครดิต?")) return;
-      try {
-         const { data: bet } = await _supabase.from('bets').select('*').eq('bet_id', bId).single();
-         if(!bet || bet.status !== 'Active') return alert("บิลไม่ถูกต้อง");
-         await _supabase.from('bets').update({ status: 'Cancelled' }).eq('bet_id', bId);
-         if (bet.play_mode === 'table') { const { data: t } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single(); await _supabase.from('tables').update({ credit: t.credit + bet.amount }).eq('table_no', bet.table_no); } 
-         else { const { data: u } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single(); await _supabase.from('users').update({ credit_balance: u.credit_balance + bet.amount }).eq('uid', bet.uid); }
-         alert("ยกเลิกบิลสำเร็จ"); document.getElementById('txtBetId').value = ""; 
-         if(document.getElementById('tabReport').classList.contains('active')) generateReport();
-      } catch(e) { alert("ยกเลิกไม่สำเร็จ"); }
-    }
-
-    async function searchUser() {
-      let mId = document.getElementById('txtSearchUser').value.trim(); if(!mId) return;
-      try {
-        const { data: u } = await _supabase.from('users').select('*').eq('member_id', mId).single();
-        if(u) {
-          selectedUserIdForManage = u.uid; document.getElementById('uManagePic').src = u.profile_pic || 'https://via.placeholder.com/150';
-          document.getElementById('uManageName').innerText = u.display_name; document.getElementById('uManageId').innerText = u.member_id;
-          document.getElementById('uManageStatus').innerText = u.status; document.getElementById('uManageStatus').style.color = u.status === 'Active' ? 'var(--green-main)' : 'var(--red-main)';
-          let rCls = 'role-cust'; if(u.role === 'Operator') rCls = 'role-op'; else if(u.role === 'Admin' || u.role === 'Superadmin') rCls = 'role-admin';
-          document.getElementById('uManageRoleBadge').className = `badge-role ${rCls}`; document.getElementById('uManageRoleBadge').innerText = u.role;
-          document.getElementById('selChangeRole').value = (u.role === 'Superadmin') ? 'Admin' : u.role;
-          document.getElementById('userInfoContainer').style.display = 'block';
-        } else { alert("ไม่พบข้อมูลสมาชิก"); document.getElementById('userInfoContainer').style.display = 'none'; }
-      } catch (e) { alert("เกิดข้อผิดพลาดในการค้นหา"); }
-    }
-
-    async function updateUserStatus(ns) {
-      if(!selectedUserIdForManage) return;
-      await _supabase.from('users').update({ status: ns }).eq('uid', selectedUserIdForManage);
-      alert(`อัปเดตสถานะสำเร็จ`); 
-      document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
-    }
-
-    async function updateUserRole() {
-      if(!selectedUserIdForManage) return;
-      let nr = document.getElementById('selChangeRole').value;
-      await _supabase.from('users').update({ role: nr }).eq('uid', selectedUserIdForManage);
-      alert(`อัปเดตสิทธิ์สำเร็จ`); 
-      document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = '';
-    }
-    
-    async function loadTableList() {
-      const l = document.getElementById('tableListContainer');
-      const { data: t } = await _supabase.from('tables').select('*').order('created_at', { ascending: true });
-      l.innerHTML = ''; if(!t || t.length === 0) { l.innerHTML = '<div style="text-align:center; color: var(--text-muted);">ยังไม่มีโต๊ะในระบบ</div>'; return; }
-      t.forEach(tb => {
-        let cd = document.createElement('div'); cd.style.cssText = "background: #0f111a; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;";
-        cd.innerHTML = `<div><div style="font-weight: 600; font-size: 1rem; color: white;">โต๊ะ ${tb.table_no}</div><div style="font-size: 0.8rem; color: var(--green-main);">เครดิต: ฿${tb.credit.toLocaleString()}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-blue" style="padding: 6px 10px; font-size: 0.85rem;" onclick="showQrCode('${tb.table_no}')"><i class="fa-solid fa-qrcode"></i> QR</button><button class="btn btn-red" style="padding: 6px 10px; font-size: 0.85rem;" onclick="deleteTable('${tb.table_no}')"><i class="fa-solid fa-trash"></i></button></div>`; l.appendChild(cd);
-      });
-    }
-
-    async function addNewTable() {
-      let tNo = document.getElementById('txtNewTable').value.trim(); if(!tNo) return;
-      try {
-         await _supabase.from('tables').insert([{ table_no: tNo, credit: 0 }]); alert('เพิ่มสำเร็จ'); 
-         document.getElementById('txtNewTable').value = ''; loadTableList();
-      } catch(e) { alert("เพิ่มไม่ได้ อาจมีชื่อโต๊ะนี้แล้ว"); }
-    }
-
-    async function deleteTable(tNo) {
-      if(confirm(`ยืนยันลบโต๊ะ ${tNo}?`)){ await _supabase.from('tables').delete().eq('table_no', tNo); loadTableList(); }
-    }
-    
-    function showQrCode(tNo) {
-      document.getElementById('qrTableNoDisplay').innerText = tNo;
-      let cleanLiff = APP_CONFIG.LIFF_ID_PLAYER.split('?')[0]; 
-      let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`https://liff.line.me/${cleanLiff}?table=${tNo}&d=${new Date().toISOString().split('T')[0]}`)}`;
-      document.getElementById('qrImage').src = qrUrl; document.getElementById('qrModal').classList.remove('hidden');
-    }
-
-    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
-
-    function toggleAffiliate() {
-      const content = document.getElementById('affiliateContent'); const icon = document.getElementById('affIcon');
-      if (content.classList.contains('open')) { content.classList.remove('open'); icon.className = "fa-solid fa-chevron-down"; } 
-      else { content.classList.add('open'); icon.className = "fa-solid fa-chevron-up"; }
-    }
-
-    async function loadAffiliateStats(user) {
-      let cleanLiff = APP_CONFIG.LIFF_ID_PLAYER.split('?')[0]; 
-      let refUrl = `https://liff.line.me/${cleanLiff}?_ref=${user.member_id}`;
-      document.getElementById('linkAffiliate').value = refUrl;
-      let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(refUrl)}`;
-      document.getElementById('qrAffiliate').src = qrUrl;
-
-      try {
-        const { data: refUsers } = await _supabase.from('users').select('uid').eq('referrer_uid', user.member_id);
-        document.getElementById('affTotalUsers').innerText = `${refUsers ? refUsers.length : 0} คน`;
-        document.getElementById('affCommission').innerText = `฿${(user.commission_balance || 0).toLocaleString()}`;
-        if (refUsers && refUsers.length > 0) {
-          let uids = refUsers.map(u => u.uid); let todayStr = new Date().toISOString().split('T')[0];
-          const { data: activeBets } = await _supabase.from('bets').select('uid').in('uid', uids).gte('created_at', todayStr + 'T00:00:00Z');
-          let uniquePlayers = new Set(activeBets.map(b => b.uid)); document.getElementById('affActiveToday').innerText = `${uniquePlayers.size} คน`;
-        }
-      } catch (e) {}
-    }
-
-    async function loadSettings() {
-      const { data: s } = await _supabase.from('system_settings').select('*').eq('id', 1).single(); 
-      if(s) { 
-         document.getElementById('settingWaterMargin').value=s.water_margin; 
-         document.getElementById('settingRoundDuration').value=s.round_duration; 
-         document.getElementById('settingCommRate').value=s.comm_rate||0.01; 
-         document.getElementById('settingMinBet').value=s.min_bet||20; 
-         document.getElementById('settingMaxBet').value=s.max_bet||5000; 
-      } 
-    }
-
-    async function saveSettings() {
-      await _supabase.from('system_settings').update({ 
-         water_margin: parseFloat(document.getElementById('settingWaterMargin').value), 
-         round_duration: parseInt(document.getElementById('settingRoundDuration').value), 
-         comm_rate: parseFloat(document.getElementById('settingCommRate').value), 
-         min_bet: parseFloat(document.getElementById('settingMinBet').value), 
-         max_bet: parseFloat(document.getElementById('settingMaxBet').value) 
-      }).eq('id', 1); 
-      alert("บันทึกการตั้งค่าสำเร็จ"); toggleSettings(); 
-    }
-
-    function toggleSettings() {
-      const c = document.getElementById('settingsContent'); const i = document.getElementById('settingsIcon');
-      if(c.classList.contains('open')){ c.classList.remove('open'); i.className="fa-solid fa-chevron-down"; } 
-      else{ c.classList.add('open'); i.className="fa-solid fa-chevron-up"; } 
-    }
-
-    function sendReportToLine() {
-        if (!cachedReportData || Object.keys(cachedReportData).length === 0) {
-            alert("กรุณารอโหลดข้อมูลก่อน หรือ ไม่มีข้อมูลในวันนี้ครับ");
-            return;
-        }
-        if(!confirm(`ยืนยันการส่งรายงานสรุปยอด วันที่ ${cachedReportData.dateStr} เข้ากลุ่ม LINE?`)) return;
-        
-        let reportDataWithAdmin = { ...cachedReportData, adminName: currentAdminName };
-        
-        notifyGAS('sendDailyReport', { reportData: reportDataWithAdmin });
-        alert("ส่งรายงานเข้า LINE เรียบร้อยแล้ว!");
     }
 
     initializeApp();
