@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ระบบผู้แนะนำ (Promoter)</title>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Kanit', sans-serif; background-color: #12141e; color: #ffffff; margin: 0; padding: 20px; }
+    .container { max-width: 480px; margin: 0 auto; }
+    .card { background: #1c1e2b; border: 1px solid #2a2d3d; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .btn { width: 100%; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+    .btn:active { transform: scale(0.98); }
+    .text-pink { color: #ec4899; }
+    .bg-pink { background: #ec4899; }
+    .wallet-box { background: #0f111a; border: 1px solid #ec4899; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #2a2d3d; padding-bottom: 15px;">
+      <div style="font-size: 1.3rem; font-weight: bold;" class="text-pink">
+          <i class="fa-solid fa-share-nodes"></i> ระบบแนะนำเพื่อน
+      </div>
+      <button onclick="window.location.href='index.html'" style="background: transparent; color: #94a3b8; border: 1px solid #94a3b8; border-radius: 6px; padding: 5px 10px; cursor: pointer;">
+          กลับหน้าหลัก
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="wallet-box">
+        <div style="color: #94a3b8; font-size: 0.9rem;">ยอดค่าคอมมิชชั่นสะสม</div>
+        <div id="commBalance" style="font-size: 2.5rem; font-weight: bold; color: #10b981; margin-top: 5px;">฿0.00</div>
+        <div style="font-size: 0.8rem; color: #ec4899; margin-top: 8px;">ผู้แนะนำ: <span id="promoterName">กำลังโหลด...</span></div>
+      </div>
+      <button class="btn bg-pink" onclick="requestWithdraw()"><i class="fa-solid fa-money-bill-transfer"></i> แจ้งถอนค่าคอมมิชชั่น</button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top: 0; border-bottom: 1px dashed #2a2d3d; padding-bottom: 10px;" class="text-pink">
+          <i class="fa-solid fa-link"></i> ลิงก์ชวนเพื่อนของคุณ
+      </h3>
+      <p style="font-size: 0.9rem; color: #94a3b8;">ให้เพื่อนของคุณสแกน QR Code หรือกดลิงก์ด้านล่างเพื่อเข้าเล่น คุณจะได้รับส่วนแบ่งเมื่อเพื่อนมีการแทงกุ้ง</p>
+      
+      <div style="background: white; padding: 15px; border-radius: 12px; display: inline-block; margin: 10px auto; text-align: center; width: 100%; box-sizing: border-box;">
+          <img id="qrCodeImg" src="https://via.placeholder.com/200?text=Loading+QR..." alt="QR Code" style="width: 200px; height: 200px; margin: 0 auto;">
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <input type="text" id="refLinkInput" readonly style="flex: 2; padding: 10px; border-radius: 8px; background: #0f111a; border: 1px solid #2a2d3d; color: white;">
+        <button class="btn" style="flex: 1; background: #3b82f6;" onclick="copyLink()"><i class="fa-regular fa-copy"></i> คัดลอก</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+    let currentUser = null;
+
+    async function initPromoter() {
+      try {
+        await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        
+        const profile = await liff.getProfile();
+        const { data: user } = await _supabase.from('users').select('*').eq('uid', profile.userId).single();
+        
+        if (!user || user.role !== 'Promoter') {
+            document.body.innerHTML = `<div style="text-align:center; padding:50px; color:red; font-family:'Kanit';"><h3>ไม่มีสิทธิ์เข้าถึง</h3><p>บัญชีของคุณไม่ใช่ผู้แนะนำ (Promoter)</p><button onclick="window.location.href='index.html'" style="margin-top:20px; padding:10px; border-radius:8px;">กลับหน้าหลัก</button></div>`;
+            return;
+        }
+
+        currentUser = user;
+        document.getElementById('promoterName').innerText = user.display_name;
+        document.getElementById('commBalance').innerText = `฿${(user.commission_balance || 0).toLocaleString()}`;
+
+        // สร้าง Link และ QR Code
+        let cleanLiff = APP_CONFIG.LIFF_ID_PLAYER.split('?')[0];
+        let refLink = `https://liff.line.me/${cleanLiff}?ref=${user.member_id}`;
+        document.getElementById('refLinkInput').value = refLink;
+        document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(refLink)}`;
+        
+      } catch (e) { alert("Error: " + e.message); }
+    }
+
+    function copyLink() {
+      let copyText = document.getElementById("refLinkInput");
+      copyText.select(); copyText.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(copyText.value);
+      alert("คัดลอกลิงก์เรียบร้อยแล้ว ส่งให้เพื่อนได้เลย!");
+    }
+
+    async function requestWithdraw() {
+      let amt = parseFloat(prompt(`คุณมีค่าคอมมิชชั่น ฿${currentUser.commission_balance}\nกรุณาระบุจำนวนเงินที่ต้องการถอน:`));
+      if (!amt || isNaN(amt) || amt <= 0) return;
+      if (amt > currentUser.commission_balance) return alert("ยอดเงินไม่พอ");
+
+      let typeCode = prompt("เลือกรูปแบบการรับเงิน:\nพิมพ์ 1 = โอนเข้าบัญชีธนาคาร (เงินสด)\nพิมพ์ 2 = เติมเป็นเครดิตเล่นเกม");
+      if(typeCode !== '1' && typeCode !== '2') return alert("ยกเลิกการทำรายการ");
+
+      try {
+          let newBal = currentUser.commission_balance - amt;
+          await _supabase.from('users').update({ commission_balance: newBal }).eq('uid', currentUser.uid);
+          
+          let wType = typeCode === '1' ? 'cash' : 'credit';
+          let rType = typeCode === '1' ? 'ถอนค่าคอม' : 'ฝากเงิน';
+          let mId = wType === 'cash' ? '-' : `(เปลี่ยนค่าคอมเป็นเครดิต)`;
+          
+          // แจ้ง GAS
+          fetch(APP_CONFIG.GAS_URL, {
+              method: 'POST',
+              body: JSON.stringify({
+                  action: 'requestAffiliateWithdraw',
+                  uid: currentUser.uid,
+                  memberId: currentUser.member_id,
+                  displayName: currentUser.display_name,
+                  amount: amt,
+                  withdrawType: wType,
+                  profilePic: currentUser.profile_pic
+              })
+          });
+
+          // บันทึกลงคิวให้แอดมิน
+          await _supabase.from('topup_requests').insert([{
+              uid: currentUser.uid, member_id: currentUser.member_id,
+              display_name: currentUser.display_name, type: rType,
+              amount: amt, method: mId, status: 'Pending'
+          }]);
+
+          alert("แจ้งทำรายการเรียบร้อยแล้ว รอแอดมินดำเนินการครับ");
+          window.location.reload();
+      } catch (e) { alert("เกิดข้อผิดพลาด"); }
+    }
+
+    initPromoter();
+  </script>
+</body>
+</html>
