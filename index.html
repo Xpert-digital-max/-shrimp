@@ -129,6 +129,7 @@
         </select>
       </div>
 
+      <!-- ช่องอัปโหลดสลิป -->
       <div style="margin-bottom: 20px; display: block;" id="slipUploadSection">
         <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">แนบสลิปโอนเงิน (บังคับ)</label>
         <input type="file" id="fileSlip" accept="image/*" style="width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: white; padding: 10px; border-radius: 8px; font-family: 'Kanit'; font-size: 0.9rem; outline: none;">
@@ -149,7 +150,7 @@
     </div>
   </div>
 
-  <!-- Modal แจ้งถอนค่าคอมมิชชั่น (ใหม่) -->
+  <!-- Modal แจ้งถอนค่าคอมมิชชั่น -->
   <div id="affWithdrawModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; width: 100%; max-width: 400px; position: relative;">
       <h3 style="margin-top: 0; color: #8b5cf6; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;"><i class="fa-solid fa-money-bill-wave"></i> แจ้งถอนค่าคอมมิชชั่น</h3>
@@ -298,7 +299,6 @@
         </div>
       </div>
 
-      <!-- ส่วน Affiliate ถูกย้ายมาหน้านี้ เพื่อความสะดวกและเป็นสัดส่วน -->
       <h3 style="margin-top: 10px; margin-bottom: 15px; color: #8b5cf6;"><i class="fa-solid fa-share-nodes"></i> ระบบแนะนำเพื่อน</h3>
       <div style="background: var(--bg-panel); border: 1px solid var(--card-border); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0; text-align: center;">ให้เพื่อนสแกน QR หรือส่งลิงก์เพื่อสมัครเป็นลูกค้าของคุณ</p>
@@ -312,7 +312,6 @@
              <div style="font-size: 1.8rem; font-weight: bold; color: #10b981;" id="affCommission">฿0</div>
           </div>
           
-          <!-- เปลี่ยนปุ่มให้กดแล้วเปิดหน้าต่างถอน -->
           <button style="width: 100%; background: #8b5cf6; border: none; color: white; border-radius: 8px; padding: 12px; font-family: 'Kanit'; font-size: 1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);" onclick="openAffWithdrawModal()">
             <i class="fa-solid fa-money-bill-transfer"></i> แจ้งถอนค่าคอมมิชชั่น
           </button>
@@ -361,7 +360,7 @@
     let targetEndTimeMs = null; 
     let timerInterval = null;
     let isRoundOpen = false; 
-    let currentCommissionBalance = 0; // เก็บยอดคอมมิชชั่นปัจจุบัน
+    let currentCommissionBalance = 0; 
 
     async function initializeApp() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -406,14 +405,8 @@
           let refId = sessionStorage.getItem('referrer_id') || null;
 
           currentUser = { 
-            uid: profile.userId, 
-            member_id: newMemberId, 
-            display_name: profile.displayName, 
-            profile_pic: profile.pictureUrl || '', 
-            credit_balance: 0, 
-            role: 'Customer', 
-            status: 'Inactive',
-            referrer_uid: refId
+            uid: profile.userId, member_id: newMemberId, display_name: profile.displayName, 
+            profile_pic: profile.pictureUrl || '', credit_balance: 0, role: 'Customer', status: 'Inactive', referrer_uid: refId
           };
           await _supabase.from('users').insert([currentUser]);
         } else {
@@ -437,7 +430,6 @@
         document.getElementById('tableDisplay').innerText = currentDisplayName || "บัญชีส่วนตัว";
         document.getElementById('creditDisplay').innerText = `฿${currentUser.credit_balance.toLocaleString()}`;
 
-        // เตรียมข้อมูล Affiliate
         let cleanLiff = APP_CONFIG.LIFF_ID_PLAYER.split('?')[0]; 
         let refUrl = `https://liff.line.me/${cleanLiff}?_ref=${memberId}`;
         document.getElementById('linkAffiliate').value = refUrl;
@@ -486,7 +478,6 @@
 
     function switchTab(tab) {
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      
       document.getElementById('bettingView').classList.add('hidden');
       document.getElementById('historyView').classList.add('hidden');
       document.getElementById('statsView').classList.add('hidden');
@@ -508,19 +499,12 @@
     async function loadDailyStats() {
       const listContainer = document.getElementById('statsListContainer');
       listContainer.innerHTML = '<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</div>';
-      
       let d = new Date();
       let prefix = `R-${d.getFullYear().toString().substring(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-`;
       
       try {
-        const { data: rounds, error } = await _supabase.from('rounds')
-          .select('round_id, weight, result, created_at')
-          .like('round_id', `${prefix}%`)
-          .eq('status', 'Ended')
-          .order('round_id', { ascending: false });
-
+        const { data: rounds, error } = await _supabase.from('rounds').select('round_id, weight, result, created_at').like('round_id', `${prefix}%`).eq('status', 'Ended').order('round_id', { ascending: false });
         if (error) throw error;
-
         let total = 0, evenCount = 0, oddCount = 0;
         listContainer.innerHTML = '';
 
@@ -529,21 +513,11 @@
           rounds.forEach(r => {
             if (r.result === 'คู่') evenCount++;
             if (r.result === 'คี่') oddCount++;
-
             let typeColor = r.result === 'คู่' ? 'var(--blue-main)' : 'var(--red-main)';
             let timeStr = new Date(r.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-            
             let card = document.createElement('div');
             card.style.cssText = "background: var(--bg-panel); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center;";
-            card.innerHTML = `
-              <div>
-                <div style="font-weight: 600; font-size: 1.1rem;">รอบ ${r.round_id}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-regular fa-clock"></i> ${timeStr} | น้ำหนัก: ${r.weight} กรัม</div>
-              </div>
-              <div style="font-weight: bold; font-size: 1.4rem; color: ${typeColor};">
-                ${r.result}
-              </div>
-            `;
+            card.innerHTML = `<div><div style="font-weight: 600; font-size: 1.1rem;">รอบ ${r.round_id}</div><div style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-regular fa-clock"></i> ${timeStr} | น้ำหนัก: ${r.weight} กรัม</div></div><div style="font-weight: bold; font-size: 1.4rem; color: ${typeColor};">${r.result}</div>`;
             listContainer.appendChild(card);
           });
         } else {
@@ -554,13 +528,11 @@
         document.getElementById('statEvenCount').innerText = evenCount;
         document.getElementById('statOddCount').innerText = oddCount;
 
-        // อัปเดตยอดคอมมิชชั่นล่าสุด
         const { data: u } = await _supabase.from('users').select('commission_balance').eq('uid', currentLineUserId).single();
         if(u) {
             currentCommissionBalance = u.commission_balance || 0;
             document.getElementById('affCommission').innerText = `฿${currentCommissionBalance.toLocaleString()}`;
         }
-
       } catch (e) {
         listContainer.innerHTML = '<div style="text-align:center; color: var(--red-main); padding: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
       }
@@ -570,20 +542,10 @@
       const btnEven = document.getElementById('btnEven');
       const btnOdd = document.getElementById('btnOdd');
       const btnSubmit = document.getElementById('btnSubmitBet');
-      
       if (isLocked) {
-        btnEven.classList.add('disabled');
-        btnOdd.classList.add('disabled');
-        btnSubmit.classList.add('disabled');
-        btnSubmit.innerText = "ปิดรับแทงชั่วคราว";
-        selectedBetType = "";
-        btnEven.classList.remove('selected');
-        btnOdd.classList.remove('selected');
+        btnEven.classList.add('disabled'); btnOdd.classList.add('disabled'); btnSubmit.classList.add('disabled'); btnSubmit.innerText = "ปิดรับแทงชั่วคราว"; selectedBetType = ""; btnEven.classList.remove('selected'); btnOdd.classList.remove('selected');
       } else {
-        btnEven.classList.remove('disabled');
-        btnOdd.classList.remove('disabled');
-        btnSubmit.classList.remove('disabled');
-        btnSubmit.innerText = "ยืนยันการแทง";
+        btnEven.classList.remove('disabled'); btnOdd.classList.remove('disabled'); btnSubmit.classList.remove('disabled'); btnSubmit.innerText = "ยืนยันการแทง";
       }
     }
 
@@ -591,27 +553,13 @@
       if(timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         let display = document.getElementById('countdownTimer');
-        
-        if (!isRoundOpen || !targetEndTimeMs) {
-          display.innerText = "00:00";
-          display.classList.add('timer-red');
-          return;
-        }
-        
-        let now = new Date().getTime();
-        let distance = targetEndTimeMs - now;
-        
+        if (!isRoundOpen || !targetEndTimeMs) { display.innerText = "00:00"; display.classList.add('timer-red'); return; }
+        let distance = targetEndTimeMs - new Date().getTime();
         if (distance <= 0) {
-          display.innerText = "00:00";
-          display.classList.add('timer-red');
-          document.getElementById('statusDisplay').innerHTML = `<span class="status-blink">รอผลชั่งกุ้ง...</span>`;
-          isRoundOpen = false;
-          lockBettingUI(true);
+          display.innerText = "00:00"; display.classList.add('timer-red'); document.getElementById('statusDisplay').innerHTML = `<span class="status-blink">รอผลชั่งกุ้ง...</span>`; isRoundOpen = false; lockBettingUI(true);
         } else {
-          let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-          let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-          display.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-          display.classList.remove('timer-red');
+          let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)); let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+          display.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`; display.classList.remove('timer-red');
         }
       }, 1000);
     }
@@ -620,62 +568,34 @@
       if (currentUserStatus !== 'Active') return; 
       try {
         const { data: uData } = await _supabase.from('users').select('credit_balance, commission_balance').eq('uid', currentLineUserId).single();
-        if(uData) {
-            document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`;
-            currentCommissionBalance = uData.commission_balance || 0; // อัปเดตเงียบๆ
-        }
+        if(uData) { document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`; currentCommissionBalance = uData.commission_balance || 0; }
 
         const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(2);
-        
         if (rounds && rounds.length > 0) {
           const currentRound = rounds[0];
           document.getElementById('roundIdDisplay').innerText = `รอบ ${currentRound.round_id}`;
           targetEndTimeMs = currentRound.end_time_ms || 0;
-          
           let now = new Date().getTime();
           
-          if(currentRound.status === 'Open' && now < targetEndTimeMs) {
-             document.getElementById('statusDisplay').innerHTML = `<span class="live-badge">● LIVE</span> เปิดรับแทง`;
-             isRoundOpen = true;
-             lockBettingUI(false);
-          } 
-          else if(currentRound.status === 'Open' && now >= targetEndTimeMs) {
-             document.getElementById('statusDisplay').innerHTML = `<span class="status-blink">รอผลชั่งกุ้ง...</span>`;
-             isRoundOpen = false;
-             lockBettingUI(true);
-          }
-          else if(currentRound.status === 'Closed') {
-             document.getElementById('statusDisplay').innerHTML = `<span class="status-blink">รอผลชั่งกุ้ง...</span>`;
-             isRoundOpen = false;
-             lockBettingUI(true);
-             targetEndTimeMs = 0; 
-          }
-          else if(currentRound.status === 'Ended') {
-             document.getElementById('statusDisplay').innerHTML = `<span style="color:var(--text-muted); font-size: 0.9rem;">⚫ จบรอบแล้ว</span>`;
-             isRoundOpen = false;
-             lockBettingUI(true);
-             targetEndTimeMs = 0;
-          }
+          if(currentRound.status === 'Open' && now < targetEndTimeMs) { document.getElementById('statusDisplay').innerHTML = `<span class="live-badge">● LIVE</span> เปิดรับแทง`; isRoundOpen = true; lockBettingUI(false); } 
+          else if(currentRound.status === 'Open' && now >= targetEndTimeMs) { document.getElementById('statusDisplay').innerHTML = `<span class="status-blink">รอผลชั่งกุ้ง...</span>`; isRoundOpen = false; lockBettingUI(true); }
+          else if(currentRound.status === 'Closed') { document.getElementById('statusDisplay').innerHTML = `<span class="status-blink">รอผลชั่งกุ้ง...</span>`; isRoundOpen = false; lockBettingUI(true); targetEndTimeMs = 0; }
+          else if(currentRound.status === 'Ended') { document.getElementById('statusDisplay').innerHTML = `<span style="color:var(--text-muted); font-size: 0.9rem;">⚫ จบรอบแล้ว</span>`; isRoundOpen = false; lockBettingUI(true); targetEndTimeMs = 0; }
 
           if(currentRound.status === 'Ended') {
              document.getElementById('prevWeight').innerText = `${currentRound.weight} กรัม`;
-             let badgeColor = currentRound.result === 'คู่' ? '' : 'red';
-             document.getElementById('prevResultBadge').className = `badge-win ${badgeColor}`;
+             document.getElementById('prevResultBadge').className = `badge-win ${currentRound.result === 'คู่' ? '' : 'red'}`;
              document.getElementById('prevResultBadge').innerText = `${currentRound.result} ชนะ`;
           } else if (rounds.length > 1 && rounds[1].status === 'Ended') {
              document.getElementById('prevWeight').innerText = `${rounds[1].weight} กรัม`;
-             let badgeColor = rounds[1].result === 'คู่' ? '' : 'red';
-             document.getElementById('prevResultBadge').className = `badge-win ${badgeColor}`;
+             document.getElementById('prevResultBadge').className = `badge-win ${rounds[1].result === 'คู่' ? '' : 'red'}`;
              document.getElementById('prevResultBadge').innerText = `${rounds[1].result} ชนะ`;
           } else {
-             document.getElementById('prevWeight').innerText = `รอข้อมูล...`;
-             document.getElementById('prevResultBadge').className = `badge-win`;
-             document.getElementById('prevResultBadge').innerText = `-`;
+             document.getElementById('prevWeight').innerText = `รอข้อมูล...`; document.getElementById('prevResultBadge').className = `badge-win`; document.getElementById('prevResultBadge').innerText = `-`;
           }
 
           const { data: bets } = await _supabase.from('bets').select('bet_type, amount, table_no').eq('round_id', currentRound.round_id).neq('status', 'Cancelled');
-          let evenAmt = 0, oddAmt = 0, totalAmt = 0;
-          let evenTables = new Set(), oddTables = new Set();
+          let evenAmt = 0, oddAmt = 0, totalAmt = 0; let evenTables = new Set(), oddTables = new Set();
           if(bets) {
             bets.forEach(b => {
               totalAmt += Number(b.amount);
@@ -683,21 +603,13 @@
               if(b.bet_type === 'คี่') { oddAmt += Number(b.amount); oddTables.add(b.table_no || '-'); }
             });
           }
-          document.getElementById('liveEvenDisplay').innerText = `฿${evenAmt.toLocaleString()}`;
-          document.getElementById('liveOddDisplay').innerText = `฿${oddAmt.toLocaleString()}`;
-          document.getElementById('liveTotalDisplay').innerText = `฿${totalAmt.toLocaleString()}`;
-          document.getElementById('countEvenDisplay').innerText = `${evenTables.size} โต๊ะ/บิล`;
-          document.getElementById('countOddDisplay').innerText = `${oddTables.size} โต๊ะ/บิล`;
+          document.getElementById('liveEvenDisplay').innerText = `฿${evenAmt.toLocaleString()}`; document.getElementById('liveOddDisplay').innerText = `฿${oddAmt.toLocaleString()}`; document.getElementById('liveTotalDisplay').innerText = `฿${totalAmt.toLocaleString()}`;
+          document.getElementById('countEvenDisplay').innerText = `${evenTables.size} โต๊ะ/บิล`; document.getElementById('countOddDisplay').innerText = `${oddTables.size} โต๊ะ/บิล`;
 
-          let evenPct = totalAmt > 0 ? (evenAmt / totalAmt) * 100 : 0;
-          let oddPct = totalAmt > 0 ? (oddAmt / totalAmt) * 100 : 0;
-          document.getElementById('barEven').style.width = `${evenPct}%`;
-          document.getElementById('barOdd').style.width = `${oddPct}%`;
+          let evenPct = totalAmt > 0 ? (evenAmt / totalAmt) * 100 : 0; let oddPct = totalAmt > 0 ? (oddAmt / totalAmt) * 100 : 0;
+          document.getElementById('barEven').style.width = `${evenPct}%`; document.getElementById('barOdd').style.width = `${oddPct}%`;
         } else {
-          document.getElementById('roundIdDisplay').innerHTML = `-`;
-          document.getElementById('statusDisplay').innerHTML = `<span class="closed-badge">OFFLINE</span> ไม่มีรอบที่เปิด`;
-          isRoundOpen = false;
-          lockBettingUI(true);
+          document.getElementById('roundIdDisplay').innerHTML = `-`; document.getElementById('statusDisplay').innerHTML = `<span class="closed-badge">OFFLINE</span> ไม่มีรอบที่เปิด`; isRoundOpen = false; lockBettingUI(true);
         }
       } catch (error) {}
     }
@@ -715,11 +627,8 @@
         if(!round) throw new Error("ปิดรับแทงแล้ว!");
 
         const { data: set } = await _supabase.from('system_settings').select('min_bet, max_bet').eq('id', 1).single();
-        const minBet = set ? set.min_bet : 20;
-        const maxBet = set ? set.max_bet : 5000;
-
-        if (amount < minBet) throw new Error(`ยอดแทงขั้นต่ำคือ ${minBet} บาท`);
-        if (amount > maxBet) throw new Error(`ยอดแทงสูงสุดคือ ${maxBet} บาท`);
+        if (amount < (set ? set.min_bet : 20)) throw new Error(`ยอดแทงขั้นต่ำคือ ${set ? set.min_bet : 20} บาท`);
+        if (amount > (set ? set.max_bet : 5000)) throw new Error(`ยอดแทงสูงสุดคือ ${set ? set.max_bet : 5000} บาท`);
 
         if (playMode === 'table') {
           const { data: tData } = await _supabase.from('tables').select('credit').eq('table_no', userTableNo).single();
@@ -731,23 +640,15 @@
           await _supabase.from('users').update({ credit_balance: uData.credit_balance - amount }).eq('uid', currentLineUserId);
         }
 
-        const newBet = {
-          bet_id: 'B' + Date.now() + Math.floor(Math.random()*1000),
-          round_id: round.round_id, uid: currentLineUserId,
-          table_no: playMode === 'table' ? userTableNo : '-',
-          bet_type: selectedBetType, amount: parseFloat(amount),
+        await _supabase.from('bets').insert([{
+          bet_id: 'B' + Date.now() + Math.floor(Math.random()*1000), round_id: round.round_id, uid: currentLineUserId,
+          table_no: playMode === 'table' ? userTableNo : '-', bet_type: selectedBetType, amount: parseFloat(amount),
           status: 'Active', play_mode: playMode, payout: 0
-        };
-        await _supabase.from('bets').insert([newBet]);
+        }]);
 
-        document.getElementById('txtAmount').value = "";
-        selectBet(""); 
-        alert("รับยอดสำเร็จ!");
+        document.getElementById('txtAmount').value = ""; selectBet(""); alert("รับยอดสำเร็จ!");
       } catch (error) { alert(error.message); } 
-      finally {
-        if(isRoundOpen) document.querySelector('.btn-submit').innerText = "ยืนยันการแทง";
-        fetchDashboard();
-      }
+      finally { if(isRoundOpen) document.querySelector('.btn-submit').innerText = "ยืนยันการแทง"; fetchDashboard(); }
     }
 
     async function loadHistory() {
@@ -764,29 +665,15 @@
           
           if (item.status === 'Active') {
             statusHtml = `<span class="badge-status st-active">รอผล</span>`;
-            if (isRoundOpen) {
-               cancelBtnHtml = `<button class="btn-cancel-bet" onclick="userCancelBet('${item.bet_id}', ${item.amount}, '${item.play_mode}', '${item.table_no}')">ยกเลิกบิล</button>`;
-            }
+            if (isRoundOpen) cancelBtnHtml = `<button class="btn-cancel-bet" onclick="userCancelBet('${item.bet_id}', ${item.amount}, '${item.play_mode}', '${item.table_no}')">ยกเลิกบิล</button>`;
           } else if (item.status === 'Win') { statusHtml = `<span class="badge-status st-win">+฿${item.payout.toLocaleString()}</span>`; } 
           else if (item.status === 'Lose') { statusHtml = `<span class="badge-status st-lose">เสีย</span>`; } 
           else if (item.status === 'Cancelled') { statusHtml = `<span class="badge-status st-cancel">ยกเลิกแล้ว</span>`; }
 
           let d = new Date(item.created_at);
           let timeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-          const card = document.createElement('div');
-          card.className = 'history-card';
-          card.innerHTML = `
-            <div class="hist-info">
-              <div class="hist-round">${item.round_id}</div>
-              <div class="hist-time">${timeStr}</div>
-              <div class="hist-type ${typeClass}">${item.bet_type}</div>
-            </div>
-            <div class="hist-action">
-              <div class="hist-amt">฿${item.amount.toLocaleString()}</div>
-              <div style="margin-bottom: 5px;">${statusHtml}</div>
-              ${cancelBtnHtml}
-            </div>
-          `;
+          const card = document.createElement('div'); card.className = 'history-card';
+          card.innerHTML = `<div class="hist-info"><div class="hist-round">${item.round_id}</div><div class="hist-time">${timeStr}</div><div class="hist-type ${typeClass}">${item.bet_type}</div></div><div class="hist-action"><div class="hist-amt">฿${item.amount.toLocaleString()}</div><div style="margin-bottom: 5px;">${statusHtml}</div>${cancelBtnHtml}</div>`;
           listDiv.appendChild(card);
         });
       } catch (error) { listDiv.innerHTML = '<div style="color:red; text-align:center;">เกิดข้อผิดพลาด</div>'; }
@@ -809,44 +696,98 @@
     }
 
     // =====================================
-    // โซนจัดการระบบฝาก/ถอน/ถอนค่าคอม
+    // โซนจัดการระบบฝาก/ถอนเครดิต
     // =====================================
-
     function openTopupModal() {
       if (currentUserStatus !== 'Active') { alert("บัญชียังไม่เปิดใช้งาน"); return; }
-      document.getElementById('topupModal').classList.remove('hidden');
-      toggleOptions();
+      document.getElementById('topupModal').classList.remove('hidden'); toggleOptions();
     }
     
     function closeTopupModal() { 
       document.getElementById('topupModal').classList.add('hidden'); 
-      document.getElementById('txtTopupAmount').value = '';
-      document.getElementById('fileSlip').value = '';
-      document.getElementById('btnSubmitTopup').disabled = false;
-      document.getElementById('btnSubmitTopup').innerHTML = 'ส่งแจ้งแอดมิน';
+      document.getElementById('txtTopupAmount').value = ''; document.getElementById('fileSlip').value = '';
+      document.getElementById('btnSubmitTopup').disabled = false; document.getElementById('btnSubmitTopup').innerHTML = 'ส่งแจ้งแอดมิน';
     }
     
     function toggleOptions() {
-      const type = document.getElementById('selTransactionType').value;
-      const method = document.getElementById('selTopupMethod').value;
-      
-      if (type === 'ถอนเงิน') {
-         document.getElementById('withdrawOptionsSection').style.display = 'block';
-         document.getElementById('paymentMethodSection').style.display = 'none'; 
-      } else {
-         document.getElementById('withdrawOptionsSection').style.display = 'none';
-         document.getElementById('paymentMethodSection').style.display = 'block';
-      }
-
+      const type = document.getElementById('selTransactionType').value; const method = document.getElementById('selTopupMethod').value;
+      if (type === 'ถอนเงิน') { document.getElementById('withdrawOptionsSection').style.display = 'block'; document.getElementById('paymentMethodSection').style.display = 'none'; } 
+      else { document.getElementById('withdrawOptionsSection').style.display = 'none'; document.getElementById('paymentMethodSection').style.display = 'block'; }
       if (type === 'ฝากเงิน' && method === 'โอนเงิน') document.getElementById('slipUploadSection').style.display = 'block';
       else document.getElementById('slipUploadSection').style.display = 'none';
     }
 
-    // --- ระบบแจ้งถอนค่าคอมมิชชั่น ---
+    function compressImageAndGetBase64(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader(); reader.readAsDataURL(file);
+        reader.onload = function (event) {
+          const img = new Image(); img.src = event.target.result;
+          img.onload = function () {
+            const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; 
+            let scaleSize = Math.min(MAX_WIDTH / img.width, 1);
+            canvas.width = img.width * scaleSize; canvas.height = img.height * scaleSize;
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]); 
+          }
+        };
+      });
+    }
+
+    // ฟังก์ชันขอเติม/ถอนเครดิตแบบบันทึกลงคิวรอดำเนินการ
+    async function submitTopupRequest() {
+      const type = document.getElementById('selTransactionType').value;
+      const amount = document.getElementById('txtTopupAmount').value;
+      const method = type === 'ถอนเงิน' ? 'โอนเงิน' : document.getElementById('selTopupMethod').value;
+      const feeOption = document.getElementById('selWithdrawFee').value;
+      const btnSubmit = document.getElementById('btnSubmitTopup');
+      
+      if (!amount || amount <= 0) { alert("ระบุจำนวนเงินให้ถูกต้อง"); return; }
+
+      let slipBase64 = "", slipMime = "";
+      if (type === 'ฝากเงิน' && method === 'โอนเงิน') {
+         const fileInput = document.getElementById('fileSlip');
+         if (fileInput.files.length === 0) { alert("กรุณาแนบรูปสลิปโอนเงินด้วยครับ"); return; }
+         slipMime = 'image/jpeg';
+         btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บีบอัดรูปภาพ...';
+         slipBase64 = await compressImageAndGetBase64(fileInput.files[0]);
+      }
+
+      btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งข้อมูล...';
+      
+      const payload = { 
+        action: 'requestTopup', uid: currentLineUserId, memberId: memberId, displayName: currentDisplayName, profilePic: document.getElementById('profileImage').src,
+        type: type, amount: parseFloat(amount), method: method, feeOption: (type === 'ถอนเงิน') ? feeOption : '-', slipBase64: slipBase64, slipMimeType: slipMime
+      };
+
+      try {
+        const response = await fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+        const res = await response.json();
+        
+        if(res.status === 'success') { 
+           // บันทึกลงตาราง topup_requests ใน Supabase
+           await _supabase.from('topup_requests').insert([{
+              uid: currentLineUserId,
+              member_id: memberId,
+              display_name: currentDisplayName,
+              type: type,
+              amount: parseFloat(amount),
+              method: method,
+              fee_option: (type === 'ถอนเงิน') ? feeOption : '-',
+              slip_url: res.fileUrl || '',
+              status: 'Pending'
+           }]);
+
+           alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
+           closeTopupModal(); 
+        } else { alert("ข้อผิดพลาด: " + res.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
+      } catch (error) { alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
+    }
+
+    // =====================================
+    // โซนแจ้งถอนค่าคอมมิชชั่น
+    // =====================================
     async function openAffWithdrawModal() {
       if (currentUserStatus !== 'Active') { alert("บัญชียังไม่เปิดใช้งาน"); return; }
-      
-      // ดึงค่ายอดคอมล่าสุดอีกครั้งเพื่อความชัวร์
       const { data: u } = await _supabase.from('users').select('commission_balance').eq('uid', currentLineUserId).single();
       if(u) { currentCommissionBalance = u.commission_balance || 0; }
       
@@ -868,159 +809,48 @@
 
       if (!amount || isNaN(amount) || amount <= 0) return alert("กรุณาระบุจำนวนเงินให้ถูกต้อง");
       if (amount > currentCommissionBalance) return alert("ยอดค่าคอมมิชชั่นไม่เพียงพอ");
-
       if (!confirm(`ยืนยันการถอนค่าคอมมิชชั่น จำนวน ฿${amount}?`)) return;
 
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ดำเนินการ...';
+      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ดำเนินการ...';
 
       try {
-          // ดึงข้อมูลล่าสุดก่อนตัดเงิน
           const { data: u } = await _supabase.from('users').select('commission_balance, credit_balance').eq('uid', currentLineUserId).single();
           if (!u || u.commission_balance < amount) throw new Error("ยอดไม่เพียงพอ (อาจถูกถอนไปแล้ว)");
 
           let newCommBal = u.commission_balance - amount;
 
           if (type === 'credit') {
-              // แบบที่ 1: โอนเข้าเครดิต (อัปเดต DB ทันที)
+              // 1. โอนเข้าเครดิต (อัปเดตเครดิตลูกค้าทันที)
               let newCreditBal = u.credit_balance + amount;
               await _supabase.from('users').update({ commission_balance: newCommBal, credit_balance: newCreditBal }).eq('uid', currentLineUserId);
               
-              // ส่งแจ้งเตือนแอดมิน
-              notifyGAS('requestAffiliateWithdraw', {
-                  uid: currentLineUserId,
-                  memberId: memberId,
-                  displayName: currentDisplayName,
-                  profilePic: document.getElementById('profileImage').src,
-                  amount: amount,
-                  withdrawType: 'credit',
-                  newCommBalance: newCommBal,
-                  newCreditBalance: newCreditBal
-              });
-
+              notifyGAS('requestAffiliateWithdraw', { uid: currentLineUserId, memberId: memberId, displayName: currentDisplayName, profilePic: document.getElementById('profileImage').src, amount: amount, withdrawType: 'credit' });
               alert(`โอนค่าคอม ฿${amount} เข้าเครดิตเรียบร้อยแล้ว เล่นต่อได้เลยครับ! 🎉`);
           } else {
-              // แบบที่ 2: ถอนเป็นเงินสด (หักยอดไว้ก่อน แล้วรอแอดมินโอน)
+              // 2. ถอนเป็นเงินสด (ส่งเข้ากระดานคิวรอดำเนินการให้แอดมิน)
               await _supabase.from('users').update({ commission_balance: newCommBal }).eq('uid', currentLineUserId);
 
-              // ส่งสลิปแจ้งแอดมิน
-              notifyGAS('requestAffiliateWithdraw', {
+              await _supabase.from('topup_requests').insert([{
                   uid: currentLineUserId,
-                  memberId: memberId,
-                  displayName: currentDisplayName,
-                  profilePic: document.getElementById('profileImage').src,
+                  member_id: memberId,
+                  display_name: currentDisplayName,
+                  type: 'ถอนค่าคอม',
                   amount: amount,
-                  withdrawType: 'cash',
-                  newCommBalance: newCommBal
-              });
+                  method: 'เงินสด/โอน',
+                  fee_option: '-',
+                  slip_url: '',
+                  status: 'Pending'
+              }]);
 
-              alert(`แจ้งถอนเงินสด ฿${amount} สำเร็จ! กรุณารอแอดมินโอนเงินเข้าบัญชีครับ 🙏`);
+              notifyGAS('requestAffiliateWithdraw', { uid: currentLineUserId, memberId: memberId, displayName: currentDisplayName, profilePic: document.getElementById('profileImage').src, amount: amount, withdrawType: 'cash' });
+              alert(`แจ้งถอนเงินสด ฿${amount} สำเร็จ! กรุณารอแอดมินตรวจสอบครับ 🙏`);
           }
 
           closeAffWithdrawModal();
-          
-          // อัปเดต UI หน้าจอ
           currentCommissionBalance = newCommBal;
           document.getElementById('affCommission').innerText = `฿${newCommBal.toLocaleString()}`;
           fetchDashboard(); 
-
-      } catch (e) {
-          alert(e.message);
-          btn.disabled = false;
-          btn.innerHTML = 'ยืนยันการถอน';
-      }
-    }
-    // --------------------------------
-
-    function compressImageAndGetBase64(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = function (event) {
-          const img = new Image();
-          img.src = event.target.result;
-          img.onload = function () {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 800; 
-            let scaleSize = MAX_WIDTH / img.width;
-            if (scaleSize > 1) scaleSize = 1; 
-            
-            canvas.width = img.width * scaleSize;
-            canvas.height = img.height * scaleSize;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
-            resolve(dataUrl.split(',')[1]); 
-          }
-        };
-      });
-    }
-
-    async function submitTopupRequest() {
-      const type = document.getElementById('selTransactionType').value;
-      const amount = document.getElementById('txtTopupAmount').value;
-      const method = type === 'ถอนเงิน' ? 'โอนเงิน' : document.getElementById('selTopupMethod').value;
-      const feeOption = document.getElementById('selWithdrawFee').value;
-      const btnSubmit = document.getElementById('btnSubmitTopup');
-      
-      if (!amount || amount <= 0) { alert("ระบุจำนวนเงินให้ถูกต้อง"); return; }
-
-      let slipBase64 = "";
-      let slipMime = "";
-      
-      if (type === 'ฝากเงิน' && method === 'โอนเงิน') {
-         const fileInput = document.getElementById('fileSlip');
-         if (fileInput.files.length === 0) { alert("กรุณาแนบรูปสลิปโอนเงินด้วยครับ"); return; }
-         
-         const file = fileInput.files[0];
-         slipMime = 'image/jpeg';
-         
-         btnSubmit.disabled = true;
-         btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บีบอัดรูปภาพ...';
-         slipBase64 = await compressImageAndGetBase64(file);
-      }
-
-      btnSubmit.disabled = true;
-      btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งข้อมูล...';
-      
-      const payload = { 
-        action: 'requestTopup', 
-        uid: currentLineUserId, 
-        memberId: memberId,
-        displayName: currentDisplayName, 
-        profilePic: document.getElementById('profileImage').src,
-        type: type, 
-        amount: parseFloat(amount), 
-        method: method, 
-        feeOption: (type === 'ถอนเงิน') ? feeOption : '-',
-        slipBase64: slipBase64,
-        slipMimeType: slipMime
-      };
-
-      try {
-        const response = await fetch(APP_CONFIG.GAS_URL, { 
-           method: 'POST', 
-           body: JSON.stringify(payload), 
-           headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
-        });
-        
-        const res = await response.json();
-        if(res.status === 'success') { 
-           alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
-           closeTopupModal(); 
-        } 
-        else { 
-           alert("ข้อผิดพลาด: " + res.message); 
-           btnSubmit.disabled = false;
-           btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
-        }
-      } catch (error) { 
-        alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); 
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
-      }
+      } catch (e) { alert(e.message); btn.disabled = false; btn.innerHTML = 'ยืนยันการถอน'; }
     }
 
     initializeApp();
