@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Backer Dashboard - คนรับจบ</title>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+    :root {
+      --bg-dark: #12141e; --card-bg: #1c1e2b; --card-border: #2a2d3d;
+      --text-main: #ffffff; --text-muted: #94a3b8;
+      --blue-main: #3b82f6; --green-main: #10b981; --red-main: #ef4444; --yellow-main: #f59e0b;
+      --bg-panel: #161925;
+    }
+    body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
+    .container { max-width: 480px; margin: 0 auto; padding-bottom: 50px; }
+    .header { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;}
+    .header-title { font-size: 1.3rem; font-weight: 600; color: #8b5cf6; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .wallet-box { background: #0f111a; border: 1px solid #8b5cf6; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 15px; }
+    .wallet-val { font-size: 2.2rem; font-weight: bold; color: var(--green-main); margin-top: 5px; }
+    .btn { width: 100%; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; font-weight: 600; cursor: pointer; color: white; background: #8b5cf6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-title"><i class="fa-solid fa-handshake-angle"></i> พาร์ทเนอร์รับจบ (Backer)</div>
+      <div id="backerName" style="color: var(--text-muted); font-size: 0.9rem;">กำลังโหลด...</div>
+    </div>
+
+    <div class="card">
+      <div class="wallet-box">
+        <div style="color: var(--text-muted); font-size: 0.9rem;">เครดิตค้ำประกันในระบบ</div>
+        <div class="wallet-val" id="backerWalletBal">฿0</div>
+        <div style="font-size: 0.8rem; color: #8b5cf6; margin-top: 8px;">สัดส่วนหุ้นรับจบ: <span id="backerSharePct">0</span>%</div>
+      </div>
+      <button class="btn" onclick="alert('กรุณาติดต่อแอดมินหลักเพื่อเติมเครดิตค้ำประกันหรือถอนเงินสดครับ')">แจ้งเติม/ถอนเครดิต</button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0; color: var(--text-main); font-size: 1.1rem; border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">ประวัติการรับจบ (20 รายการล่าสุด)</h3>
+      <div id="backerLogsContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
+        <div style="text-align:center; color: var(--text-muted); padding: 20px;">กำลังโหลดประวัติ...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+    let currentUid = "";
+
+    async function initBacker() {
+      try {
+        await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER }); // ใช้ LIFF เดียวกับผู้เล่นหรือสร้างแยกก็ได้
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const profile = await liff.getProfile();
+        currentUid = profile.userId;
+
+        const { data: user } = await _supabase.from('users').select('*').eq('uid', currentUid).single();
+        if (!user || user.role !== 'Backer') {
+           document.body.innerHTML = `<div style="text-align:center; padding:50px; color:red; font-family:'Kanit';"><h3>ไม่มีสิทธิ์เข้าถึง</h3><p>บัญชีของคุณไม่ใช่สถานะพาร์ทเนอร์รับจบ (Backer)</p></div>`;
+           return;
+        }
+
+        document.getElementById('backerName').innerText = user.display_name;
+        document.getElementById('backerWalletBal').innerText = `฿${(user.backer_wallet || 0).toLocaleString()}`;
+        document.getElementById('backerSharePct').innerText = user.backer_share || 0;
+
+        loadBackerLogs(currentUid);
+      } catch (e) { alert("Error: " + e.message); }
+    }
+
+    async function loadBackerLogs(uid) {
+      const container = document.getElementById('backerLogsContainer');
+      try {
+        const { data: logs } = await _supabase.from('backer_logs').select('*').eq('uid', uid).order('created_at', { ascending: false }).limit(20);
+        container.innerHTML = '';
+        if (!logs || logs.length === 0) {
+           container.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ยังไม่มีประวัติการรับจบ</div>';
+           return;
+        }
+
+        logs.forEach(l => {
+           let color = l.pnl_amount >= 0 ? 'var(--green-main)' : 'var(--red-main)';
+           let sign = l.pnl_amount >= 0 ? '+' : '';
+           let timeStr = new Date(l.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+           let div = document.createElement('div');
+           div.style.cssText = "background: #0f111a; padding: 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;";
+           div.innerHTML = `
+             <div>
+               <div style="font-weight: bold; font-size: 1rem;">รอบ ${l.round_id} (${l.result_status})</div>
+               <div style="font-size: 0.8rem; color: var(--text-muted);">${timeStr} | ส่วนต่างที่ลงขัน: ฿${l.gap_amount.toLocaleString()}</div>
+             </div>
+             <div style="text-align: right;">
+               <div style="font-weight: bold; font-size: 1.1rem; color: ${color};">${sign}฿${l.pnl_amount.toLocaleString()}</div>
+               <div style="font-size: 0.75rem; color: var(--text-muted);">คงเหลือ ฿${l.wallet_balance_after.toLocaleString()}</div>
+             </div>
+           `;
+           container.appendChild(div);
+        });
+      } catch (e) { container.innerHTML = '<div style="color:red; text-align:center;">โหลดประวัติไม่สำเร็จ</div>'; }
+    }
+
+    initBacker();
+  </script>
+</body>
+</html>
