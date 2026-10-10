@@ -103,7 +103,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal แจ้งฝาก/ถอน -->
+  <!-- Modal แจ้งฝาก/ถอน ปกติ -->
   <div id="topupModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; width: 100%; max-width: 400px; position: relative; max-height: 90vh; overflow-y: auto;">
       <h3 style="margin-top: 0; color: var(--blue-main); border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">แจ้งทำรายการ ฝาก/ถอน</h3>
@@ -129,7 +129,6 @@
         </select>
       </div>
 
-      <!-- ช่องอัปโหลดสลิป -->
       <div style="margin-bottom: 20px; display: block;" id="slipUploadSection">
         <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">แนบสลิปโอนเงิน (บังคับ)</label>
         <input type="file" id="fileSlip" accept="image/*" style="width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: white; padding: 10px; border-radius: 8px; font-family: 'Kanit'; font-size: 0.9rem; outline: none;">
@@ -146,6 +145,36 @@
       <div style="display: flex; gap: 10px;">
         <button onclick="closeTopupModal()" style="flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); border-radius: 8px; padding: 12px; font-family: 'Kanit'; cursor: pointer;">ยกเลิก</button>
         <button id="btnSubmitTopup" onclick="submitTopupRequest()" style="flex: 1; background: var(--blue-main); border: none; color: white; border-radius: 8px; padding: 12px; font-family: 'Kanit'; font-weight: 600; cursor: pointer;">ส่งแจ้งแอดมิน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal แจ้งถอนค่าคอมมิชชั่น (ใหม่) -->
+  <div id="affWithdrawModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; width: 100%; max-width: 400px; position: relative;">
+      <h3 style="margin-top: 0; color: #8b5cf6; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;"><i class="fa-solid fa-money-bill-wave"></i> แจ้งถอนค่าคอมมิชชั่น</h3>
+      
+      <div style="margin-bottom: 20px; text-align: center; background: #0f111a; padding: 15px; border-radius: 12px;">
+        <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">ค่าคอมมิชชั่นที่ถอนได้</div>
+        <div style="color: #10b981; font-size: 2rem; font-weight: bold;" id="lblMaxComm">฿0</div>
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">รูปแบบการถอน</label>
+        <select id="selAffWithdrawType" style="width: 100%; box-sizing: border-box; background: #1c1e2b; border: 1px solid #8b5cf6; color: white; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; outline: none;">
+          <option value="credit">โอนเป็นเครดิตเล่นเกม (เข้าระบบทันที)</option>
+          <option value="cash">ถอนเป็นเงินสด (แอดมินโอนเข้าบัญชี)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 25px;">
+        <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">จำนวนเงินที่ต้องการถอน</label>
+        <input type="number" id="txtAffWithdrawAmount" placeholder="ระบุจำนวนเงิน" style="width: 100%; box-sizing: border-box; background: #1c1e2b; border: 1px solid var(--card-border); color: white; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1.2rem; outline: none;">
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button onclick="closeAffWithdrawModal()" style="flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); border-radius: 8px; padding: 12px; font-family: 'Kanit'; cursor: pointer;">ยกเลิก</button>
+        <button id="btnSubmitAffWithdraw" onclick="submitAffWithdraw()" style="flex: 1; background: #8b5cf6; border: none; color: white; border-radius: 8px; padding: 12px; font-family: 'Kanit'; font-weight: 600; cursor: pointer;">ยืนยันการถอน</button>
       </div>
     </div>
   </div>
@@ -251,7 +280,6 @@
     <div id="statsView" class="hidden">
       <h3 style="margin-top:0; color: var(--text-main);"><i class="fa-solid fa-chart-pie"></i> สถิติการออกรางวัลวันนี้</h3>
       
-      <!-- กล่องสถิติ 3 กล่อง -->
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
         <div style="background: var(--bg-panel); padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid var(--card-border);">
           <div style="font-size: 0.8rem; color: var(--text-muted);">เล่นไปแล้ว</div>
@@ -259,15 +287,35 @@
           <div style="font-size: 0.7rem; color: var(--text-muted);">รอบ</div>
         </div>
         <div style="background: #1a1e2f; padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid rgba(59, 130, 246, 0.3);">
-          <div style="font-size: 0.8rem; color: var(--blue-main);">ออกคู่ (Even)</div>
+          <div style="font-size: 0.8rem; color: var(--blue-main);">ออกคู่</div>
           <div style="font-size: 1.5rem; font-weight: bold; color: white;" id="statEvenCount">0</div>
           <div style="font-size: 0.7rem; color: var(--text-muted);">รอบ</div>
         </div>
         <div style="background: #23161c; padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.3);">
-          <div style="font-size: 0.8rem; color: var(--red-main);">ออกคี่ (Odd)</div>
+          <div style="font-size: 0.8rem; color: var(--red-main);">ออกคี่</div>
           <div style="font-size: 1.5rem; font-weight: bold; color: white;" id="statOddCount">0</div>
           <div style="font-size: 0.7rem; color: var(--text-muted);">รอบ</div>
         </div>
+      </div>
+
+      <!-- ส่วน Affiliate ถูกย้ายมาหน้านี้ เพื่อความสะดวกและเป็นสัดส่วน -->
+      <h3 style="margin-top: 10px; margin-bottom: 15px; color: #8b5cf6;"><i class="fa-solid fa-share-nodes"></i> ระบบแนะนำเพื่อน</h3>
+      <div style="background: var(--bg-panel); border: 1px solid var(--card-border); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0; text-align: center;">ให้เพื่อนสแกน QR หรือส่งลิงก์เพื่อสมัครเป็นลูกค้าของคุณ</p>
+          <div style="text-align: center;">
+            <div style="background: white; padding: 10px; border-radius: 12px; display: inline-block; margin: 10px auto;"><img id="qrAffiliate" src="" alt="QR" style="width: 120px; height: 120px;"></div>
+            <div style="margin-bottom: 15px;"><input type="text" id="linkAffiliate" readonly style="width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: var(--blue-main); padding: 10px; border-radius: 8px; font-family: 'Kanit'; font-size: 0.8rem; text-align: center; outline: none;"></div>
+          </div>
+          
+          <div style="background: #1c1e2b; border: 1px solid #8b5cf6; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
+             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">รายได้ค่าคอมมิชชั่นสะสม</div>
+             <div style="font-size: 1.8rem; font-weight: bold; color: #10b981;" id="affCommission">฿0</div>
+          </div>
+          
+          <!-- เปลี่ยนปุ่มให้กดแล้วเปิดหน้าต่างถอน -->
+          <button style="width: 100%; background: #8b5cf6; border: none; color: white; border-radius: 8px; padding: 12px; font-family: 'Kanit'; font-size: 1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);" onclick="openAffWithdrawModal()">
+            <i class="fa-solid fa-money-bill-transfer"></i> แจ้งถอนค่าคอมมิชชั่น
+          </button>
       </div>
 
       <h4 style="margin-bottom: 15px; color: var(--text-main);">ประวัติรอบวันนี้</h4>
@@ -290,7 +338,7 @@
       <i class="fa-solid fa-bullseye"></i><span>แทง</span>
     </div>
     <div class="nav-item" onclick="switchTab('stats')">
-      <i class="fa-solid fa-receipt"></i><span>ผลรอบ</span>
+      <i class="fa-solid fa-chart-pie"></i><span>ผลรอบ/แนะนำ</span>
     </div>
     <div class="nav-item" onclick="switchTab('history')">
       <i class="fa-solid fa-clock-rotate-left"></i><span>ประวัติ</span>
@@ -313,11 +361,11 @@
     let targetEndTimeMs = null; 
     let timerInterval = null;
     let isRoundOpen = false; 
+    let currentCommissionBalance = 0; // เก็บยอดคอมมิชชั่นปัจจุบัน
 
     async function initializeApp() {
       const urlParams = new URLSearchParams(window.location.search);
       
-      // ดักจับ QR หมดอายุของโต๊ะ
       if(urlParams.get('table')) { 
         let qrDate = urlParams.get('d');
         let todayDate = new Date().toISOString().split('T')[0];
@@ -328,7 +376,6 @@
         }
       }
 
-      // ดักจับลิงก์แนะนำ (Affiliate)
       if(urlParams.get('_ref')) {
          sessionStorage.setItem('referrer_id', urlParams.get('_ref'));
       }
@@ -383,10 +430,19 @@
 
         memberId = currentUser.member_id;
         currentUserStatus = currentUser.status; 
+        currentCommissionBalance = currentUser.commission_balance || 0;
+
         document.getElementById('memberIdDisplay').innerText = memberId;
         document.getElementById('pendingMemberId').innerText = memberId;
         document.getElementById('tableDisplay').innerText = currentDisplayName || "บัญชีส่วนตัว";
         document.getElementById('creditDisplay').innerText = `฿${currentUser.credit_balance.toLocaleString()}`;
+
+        // เตรียมข้อมูล Affiliate
+        let cleanLiff = APP_CONFIG.LIFF_ID_PLAYER.split('?')[0]; 
+        let refUrl = `https://liff.line.me/${cleanLiff}?_ref=${memberId}`;
+        document.getElementById('linkAffiliate').value = refUrl;
+        document.getElementById('qrAffiliate').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(refUrl)}`;
+        document.getElementById('affCommission').innerText = `฿${currentCommissionBalance.toLocaleString()}`;
 
         if (currentUserStatus === 'Active') {
           document.getElementById('bettingView').classList.remove('hidden');
@@ -431,7 +487,6 @@
     function switchTab(tab) {
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       
-      // ปิดทุกหน้าก่อน
       document.getElementById('bettingView').classList.add('hidden');
       document.getElementById('historyView').classList.add('hidden');
       document.getElementById('statsView').classList.add('hidden');
@@ -442,7 +497,7 @@
       } else if (tab === 'stats') {
         document.getElementById('statsView').classList.remove('hidden');
         document.querySelectorAll('.nav-item')[1].classList.add('active');
-        loadDailyStats(); // เรียกใช้ฟังก์ชันดึงสถิติ
+        loadDailyStats(); 
       } else if (tab === 'history') {
         document.getElementById('historyView').classList.remove('hidden');
         document.querySelectorAll('.nav-item')[2].classList.add('active');
@@ -450,9 +505,6 @@
       }
     }
 
-    // =====================================
-    // ฟังก์ชันใหม่: ดึงสถิติรายวัน
-    // =====================================
     async function loadDailyStats() {
       const listContainer = document.getElementById('statsListContainer');
       listContainer.innerHTML = '<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</div>';
@@ -501,6 +553,13 @@
         document.getElementById('statTotalRounds').innerText = total;
         document.getElementById('statEvenCount').innerText = evenCount;
         document.getElementById('statOddCount').innerText = oddCount;
+
+        // อัปเดตยอดคอมมิชชั่นล่าสุด
+        const { data: u } = await _supabase.from('users').select('commission_balance').eq('uid', currentLineUserId).single();
+        if(u) {
+            currentCommissionBalance = u.commission_balance || 0;
+            document.getElementById('affCommission').innerText = `฿${currentCommissionBalance.toLocaleString()}`;
+        }
 
       } catch (e) {
         listContainer.innerHTML = '<div style="text-align:center; color: var(--red-main); padding: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
@@ -560,8 +619,11 @@
     async function fetchDashboard() {
       if (currentUserStatus !== 'Active') return; 
       try {
-        const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', currentLineUserId).single();
-        if(uData) document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`;
+        const { data: uData } = await _supabase.from('users').select('credit_balance, commission_balance').eq('uid', currentLineUserId).single();
+        if(uData) {
+            document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`;
+            currentCommissionBalance = uData.commission_balance || 0; // อัปเดตเงียบๆ
+        }
 
         const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(2);
         
@@ -746,6 +808,10 @@
       } catch (error) { alert("ข้อผิดพลาด"); }
     }
 
+    // =====================================
+    // โซนจัดการระบบฝาก/ถอน/ถอนค่าคอม
+    // =====================================
+
     function openTopupModal() {
       if (currentUserStatus !== 'Active') { alert("บัญชียังไม่เปิดใช้งาน"); return; }
       document.getElementById('topupModal').classList.remove('hidden');
@@ -775,6 +841,96 @@
       if (type === 'ฝากเงิน' && method === 'โอนเงิน') document.getElementById('slipUploadSection').style.display = 'block';
       else document.getElementById('slipUploadSection').style.display = 'none';
     }
+
+    // --- ระบบแจ้งถอนค่าคอมมิชชั่น ---
+    async function openAffWithdrawModal() {
+      if (currentUserStatus !== 'Active') { alert("บัญชียังไม่เปิดใช้งาน"); return; }
+      
+      // ดึงค่ายอดคอมล่าสุดอีกครั้งเพื่อความชัวร์
+      const { data: u } = await _supabase.from('users').select('commission_balance').eq('uid', currentLineUserId).single();
+      if(u) { currentCommissionBalance = u.commission_balance || 0; }
+      
+      document.getElementById('lblMaxComm').innerText = `฿${currentCommissionBalance.toLocaleString()}`;
+      document.getElementById('txtAffWithdrawAmount').value = '';
+      document.getElementById('affWithdrawModal').classList.remove('hidden');
+    }
+
+    function closeAffWithdrawModal() {
+      document.getElementById('affWithdrawModal').classList.add('hidden');
+      document.getElementById('btnSubmitAffWithdraw').disabled = false;
+      document.getElementById('btnSubmitAffWithdraw').innerHTML = 'ยืนยันการถอน';
+    }
+
+    async function submitAffWithdraw() {
+      let amount = parseFloat(document.getElementById('txtAffWithdrawAmount').value);
+      let type = document.getElementById('selAffWithdrawType').value;
+      let btn = document.getElementById('btnSubmitAffWithdraw');
+
+      if (!amount || isNaN(amount) || amount <= 0) return alert("กรุณาระบุจำนวนเงินให้ถูกต้อง");
+      if (amount > currentCommissionBalance) return alert("ยอดค่าคอมมิชชั่นไม่เพียงพอ");
+
+      if (!confirm(`ยืนยันการถอนค่าคอมมิชชั่น จำนวน ฿${amount}?`)) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ดำเนินการ...';
+
+      try {
+          // ดึงข้อมูลล่าสุดก่อนตัดเงิน
+          const { data: u } = await _supabase.from('users').select('commission_balance, credit_balance').eq('uid', currentLineUserId).single();
+          if (!u || u.commission_balance < amount) throw new Error("ยอดไม่เพียงพอ (อาจถูกถอนไปแล้ว)");
+
+          let newCommBal = u.commission_balance - amount;
+
+          if (type === 'credit') {
+              // แบบที่ 1: โอนเข้าเครดิต (อัปเดต DB ทันที)
+              let newCreditBal = u.credit_balance + amount;
+              await _supabase.from('users').update({ commission_balance: newCommBal, credit_balance: newCreditBal }).eq('uid', currentLineUserId);
+              
+              // ส่งแจ้งเตือนแอดมิน
+              notifyGAS('requestAffiliateWithdraw', {
+                  uid: currentLineUserId,
+                  memberId: memberId,
+                  displayName: currentDisplayName,
+                  profilePic: document.getElementById('profileImage').src,
+                  amount: amount,
+                  withdrawType: 'credit',
+                  newCommBalance: newCommBal,
+                  newCreditBalance: newCreditBal
+              });
+
+              alert(`โอนค่าคอม ฿${amount} เข้าเครดิตเรียบร้อยแล้ว เล่นต่อได้เลยครับ! 🎉`);
+          } else {
+              // แบบที่ 2: ถอนเป็นเงินสด (หักยอดไว้ก่อน แล้วรอแอดมินโอน)
+              await _supabase.from('users').update({ commission_balance: newCommBal }).eq('uid', currentLineUserId);
+
+              // ส่งสลิปแจ้งแอดมิน
+              notifyGAS('requestAffiliateWithdraw', {
+                  uid: currentLineUserId,
+                  memberId: memberId,
+                  displayName: currentDisplayName,
+                  profilePic: document.getElementById('profileImage').src,
+                  amount: amount,
+                  withdrawType: 'cash',
+                  newCommBalance: newCommBal
+              });
+
+              alert(`แจ้งถอนเงินสด ฿${amount} สำเร็จ! กรุณารอแอดมินโอนเงินเข้าบัญชีครับ 🙏`);
+          }
+
+          closeAffWithdrawModal();
+          
+          // อัปเดต UI หน้าจอ
+          currentCommissionBalance = newCommBal;
+          document.getElementById('affCommission').innerText = `฿${newCommBal.toLocaleString()}`;
+          fetchDashboard(); 
+
+      } catch (e) {
+          alert(e.message);
+          btn.disabled = false;
+          btn.innerHTML = 'ยืนยันการถอน';
+      }
+    }
+    // --------------------------------
 
     function compressImageAndGetBase64(file) {
       return new Promise((resolve) => {
