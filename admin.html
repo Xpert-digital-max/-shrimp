@@ -70,7 +70,7 @@
     .role-op { background: rgba(59, 130, 246, 0.2); color: var(--blue-main); }
     .role-admin { background: rgba(245, 158, 11, 0.2); color: var(--yellow-main); }
     .role-backer { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
-    .role-promoter { background: rgba(236, 72, 153, 0.2); color: #ec4899; } /* สีชมพูสำหรับผู้แนะนำ */
+    .role-promoter { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
     
     .settings-content { display: none; margin-top: 15px; }
     .settings-content.open { display: block; }
@@ -186,14 +186,15 @@
         <div id="liveBetsFeedList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
       </div>
 
+      <!-- แก้ไขสถานะเริ่มต้นของสลับโหมดเป็น เล่นส่วนตัว (รหัส) -->
       <div class="card" id="cardCreditManage">
         <div class="card-title"><i class="fa-solid fa-coins"></i> ระบบ เติม / ถอน เครดิต (ด่วน)</div>
         <div class="switch-mode">
-          <div class="switch-btn active" id="creditModeTable" onclick="setCreditMode('table')">ลูกค้าลงโต๊ะ</div>
-          <div class="switch-btn" id="creditModePrivate" onclick="setCreditMode('private')">รหัสบุคคล (M000X)</div>
+          <div class="switch-btn active" id="creditModePrivate" onclick="setCreditMode('private')">ลูกค้า/คนรับจบ (รหัส)</div>
+          <div class="switch-btn" id="creditModeTable" onclick="setCreditMode('table')">ลูกค้าลงโต๊ะ</div>
         </div>
         <div class="form-group">
-          <label id="targetLabel">หมายเลขโต๊ะ</label>
+          <label id="targetLabel">รหัสลูกค้า (M000X)</label>
           <input type="text" id="txtTargetId" class="form-control" placeholder="ระบุเบอร์โต๊ะ หรือ รหัส M000X">
         </div>
         <div class="form-group">
@@ -431,7 +432,7 @@
 
   <script>
     const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-    let currentOpId = "", currentAdminName = "", creditMode = "table", currentUserRole = "Customer", selectedUserIdForManage = ""; 
+    let currentOpId = "", currentAdminName = "", creditMode = "private", currentUserRole = "Customer", selectedUserIdForManage = ""; 
     let targetEndTimeMs = null, isRoundOpen = false;
 
     async function notifyGAS(action, payloadData) {
@@ -687,6 +688,7 @@
                 
                 document.getElementById('uManageRoleBadge').className = `badge-role ${rCls}`; 
                 document.getElementById('uManageRoleBadge').innerText = u.role || 'Customer'; 
+                
                 document.getElementById('selChangeRole').value = (u.role === 'Superadmin') ? 'Admin' : (u.role || 'Customer'); 
                 checkRoleChange();
 
@@ -1142,8 +1144,69 @@
       }
     }
 
-    async function processCredit(type) { /* โค้ดอยู่ด้านบนแล้ว */ }
-    async function cancelBet() { /* โค้ดอยู่ด้านบนแล้ว */ }
+    // ฟังก์ชันยิบย่อย
+    function setCreditMode(m) { 
+        creditMode = m; 
+        document.getElementById('creditModeTable').classList.remove('active'); 
+        document.getElementById('creditModePrivate').classList.remove('active'); 
+        document.getElementById(m==='table'?'creditModeTable':'creditModePrivate').classList.add('active'); 
+        document.getElementById('targetLabel').innerText = m==='table'?"หมายเลขโต๊ะ":"รหัสลูกค้า (M000X)"; 
+    }
+    
+    async function processCredit(type) {
+      let tId = document.getElementById('txtTargetId').value.trim(); 
+      let amountStr = document.getElementById('txtAmount').value;
+      let amount = parseFloat(amountStr);
+      
+      if(!tId || !amountStr || isNaN(amount) || amount <= 0) return alert("กรุณากรอกข้อมูลให้ครบถ้วน"); 
+      if(!confirm(`ยืนยันการทำรายการ ${type === 'deposit' ? 'ฝาก' : 'ถอน'} ${amount} บาท ให้กับรหัส ${tId}?`)) return;
+      
+      try {
+        if(creditMode === 'table') {
+          const { data: t, error: tableError } = await _supabase.from('tables').select('credit').eq('table_no', tId).single();
+          if(tableError || !t) throw new Error("ไม่พบเบอร์โต๊ะนี้ในระบบ");
+          let newBal = type === 'deposit' ? t.credit + amount : t.credit - amount;
+          if (newBal < 0) throw new Error("ยอดเงินในโต๊ะไม่พอให้ถอน");
+          await _supabase.from('tables').update({ credit: newBal }).eq('table_no', tId);
+          await _supabase.from('transactions').insert([{ target_id: 'โต๊ะ ' + tId, type: type, amount: amount, admin_name: currentAdminName, target_type: 'table' }]);
+          alert(`สำเร็จ!\nโต๊ะ: ${tId}\nเครดิตคงเหลือ: ฿${newBal.toLocaleString()}`);
+        } else {
+          const { data: u, error: userError } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit, role, backer_wallet').eq('member_id', tId).single();
+          if(userError || !u) throw new Error("ไม่พบรหัสสมาชิกนี้ในระบบ (เช่น M0001 ตัวใหญ่)");
+          if(u.status !== 'Active') throw new Error(`ไม่สามารถทำรายการได้! บัญชีลูกค้ารหัส ${tId} ถูกระงับ`);
+          
+          if (u.role === 'Backer') {
+              let newBackerBal = type === 'deposit' ? (u.backer_wallet || 0) + amount : (u.backer_wallet || 0) - amount;
+              if (newBackerBal < 0) throw new Error("ยอดกระเป๋าเงินคนรับจบไม่พอให้ถอน");
+              await _supabase.from('users').update({ backer_wallet: newBackerBal }).eq('uid', u.uid);
+              notifyGAS('adminTopupComplete', { adminName: currentAdminName, type: type, targetUid: u.uid, targetMemberId: tId, amount: amount, newBalance: newBackerBal });
+          } else {
+              let newBal = type === 'deposit' ? u.credit_balance + amount : u.credit_balance - amount;
+              if (newBal < 0) throw new Error("ยอดเครดิตลูกค้าไม่พอให้ถอน");
+              let updateData = { credit_balance: newBal };
+              if (type === 'deposit') updateData.total_deposit = (u.total_deposit || 0) + amount; 
+              await _supabase.from('users').update(updateData).eq('uid', u.uid);
+              notifyGAS('adminTopupComplete', { adminName: currentAdminName, type: type, targetUid: u.uid, targetMemberId: tId, amount: amount, newBalance: newBal });
+          }
+          await _supabase.from('transactions').insert([{ target_id: tId, type: type, amount: amount, admin_name: currentAdminName, target_type: 'user' }]);
+          alert(`สำเร็จ! อัปเดตยอดและส่งแจ้งเตือนให้เรียบร้อยแล้ว`);
+        }
+        document.getElementById('txtAmount').value = ""; loadTableList(); 
+      } catch(e) { alert("ข้อผิดพลาด: " + e.message); }
+    }
+    
+    async function cancelBet() {
+      let bId = document.getElementById('txtBetId').value.trim(); if(!confirm("ยืนยันยกเลิกและคืนเครดิต?")) return;
+      try {
+         const { data: bet } = await _supabase.from('bets').select('*').eq('bet_id', bId).single();
+         if(!bet || bet.status !== 'Active') return alert("บิลไม่ถูกต้อง");
+         await _supabase.from('bets').update({ status: 'Cancelled' }).eq('bet_id', bId);
+         if (bet.play_mode === 'table') { const { data: t } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single(); await _supabase.from('tables').update({ credit: t.credit + bet.amount }).eq('table_no', bet.table_no); } 
+         else { const { data: u } = await _supabase.from('users').select('credit_balance').eq('uid', bet.uid).single(); await _supabase.from('users').update({ credit_balance: u.credit_balance + bet.amount }).eq('uid', bet.uid); }
+         alert("ยกเลิกบิลสำเร็จ"); document.getElementById('txtBetId').value = ""; 
+         if(document.getElementById('tabReport').classList.contains('active')) generateReport();
+      } catch(e) { alert("ยกเลิกไม่สำเร็จ"); }
+    }
     async function loadTableList() { const l = document.getElementById('tableListContainer'); const { data: t } = await _supabase.from('tables').select('*').order('created_at', { ascending: true }); l.innerHTML = ''; if(!t || t.length === 0) { l.innerHTML = '<div style="text-align:center; color: var(--text-muted);">ยังไม่มีโต๊ะในระบบ</div>'; return; } t.forEach(tb => { let cd = document.createElement('div'); cd.style.cssText = "background: #0f111a; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;"; cd.innerHTML = `<div><div style="font-weight: 600; font-size: 1rem; color: white;">โต๊ะ ${tb.table_no}</div><div style="font-size: 0.8rem; color: var(--green-main);">เครดิต: ฿${tb.credit.toLocaleString()}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-blue" style="padding: 6px 10px; font-size: 0.85rem;" onclick="showQrCode('${tb.table_no}')"><i class="fa-solid fa-qrcode"></i> QR</button><button class="btn btn-red" style="padding: 6px 10px; font-size: 0.85rem;" onclick="deleteTable('${tb.table_no}')"><i class="fa-solid fa-trash"></i></button></div>`; l.appendChild(cd); }); }
     async function addNewTable() { let tNo = document.getElementById('txtNewTable').value.trim(); if(!tNo) return; try { await _supabase.from('tables').insert([{ table_no: tNo, credit: 0 }]); alert('เพิ่มสำเร็จ'); document.getElementById('txtNewTable').value = ''; loadTableList(); } catch(e) { alert("เพิ่มไม่ได้ อาจมีชื่อโต๊ะนี้แล้ว"); } }
     async function deleteTable(tNo) { if(confirm(`ยืนยันลบโต๊ะ ${tNo}?`)){ await _supabase.from('tables').delete().eq('table_no', tNo); loadTableList(); } }
