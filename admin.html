@@ -190,7 +190,7 @@
       <div class="card" id="cardCreditManage">
         <div class="card-title"><i class="fa-solid fa-coins"></i> ระบบ เติม / ถอน เครดิต (ด่วน)</div>
         <div class="switch-mode">
-          <div class="switch-btn active" id="creditModePrivate" onclick="setCreditMode('private')">ลูกค้า/คนรับจบ (รหัส)</div>
+          <div class="switch-btn active" id="creditModePrivate" onclick="setCreditMode('private')">ลูกค้าส่วนตัว (รหัส)</div>
           <div class="switch-btn" id="creditModeTable" onclick="setCreditMode('table')">ลูกค้าลงโต๊ะ</div>
         </div>
         <div class="form-group">
@@ -432,6 +432,7 @@
 
   <script>
     const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+    // 1. ตั้งค่าเริ่มต้นโหมดเติมเครดิตเป็น private 
     let currentOpId = "", currentAdminName = "", creditMode = "private", currentUserRole = "Customer", selectedUserIdForManage = ""; 
     let targetEndTimeMs = null, isRoundOpen = false;
 
@@ -462,9 +463,15 @@
              let dataParts = payloadData.split('_'); 
              if (dataParts.length === 3) {
                  let t_mid = dataParts[0]; let t_amt = dataParts[1]; let t_type_code = dataParts[2];
-                 switchAdminTab('pending');
-                 alert(`มีคำขอรายการใหม่ จากรหัส: ${t_mid}\nยอด: ${t_amt} ฿\n\nระบบนำคุณมาที่หน้าคิวรอดำเนินการ โปรดตรวจสอบสลิปและกดยืนยันครับ`);
-                 history.replaceState(null, null, ' ');
+                 
+                 // 2. ปรับให้เอาข้อมูลจาก Hash มากดเข้าโหมดควบคุมบ่อ กรอกข้อมูลรอล่วงหน้า
+                 switchAdminTab('control');
+                 document.getElementById('creditModePrivate').click(); // สลับไปโหมดรหัส
+                 document.getElementById('txtTargetId').value = t_mid;
+                 document.getElementById('txtAmount').value = t_amt;
+                 
+                 alert(`มีคำขอรายการใหม่จาก LINE!\n\nรหัส: ${t_mid}\nยอด: ${t_amt} ฿\n\nระบบกรอกข้อมูลให้แล้ว โปรดตรวจสอบและกดยืนยันรายการครับ`);
+                 history.replaceState(null, null, ' '); // เคลียร์ hash ป้องกันการเด้งซ้ำ
              }
           }
         } else { liff.login({ redirectUri: window.location.href }); }
@@ -477,7 +484,6 @@
         const { data: user } = await _supabase.from('users').select('role, status, member_id, commission_balance').eq('uid', uid).single();
         if (user) currentUserRole = user.role;
         
-        // ถ้าเป็นคนเล่น (Customer) หรือโดนแบน (Inactive) หรือผู้แนะนำ (Promoter) จะเข้าหน้า Admin ไม่ได้
         if (currentUserRole === 'Customer' || currentUserRole === 'Inactive' || currentUserRole === 'Promoter' || !user) {
           document.getElementById('adminTabs').style.display = 'none';
           document.getElementById('adminContentView').classList.add('hidden');
@@ -511,7 +517,6 @@
       } catch (error) {}
     }
 
-    // สลับหน้าจอ
     function switchAdminTab(tab) {
         document.getElementById('tabControl').classList.remove('active');
         document.getElementById('tabPending').classList.remove('active');
@@ -527,7 +532,7 @@
         } else if (tab === 'pending') {
             document.getElementById('tabPending').classList.add('active');
             document.getElementById('pendingContentView').classList.remove('hidden');
-            loadPendingRequests(); // โหลดข้อมูลทุกครั้งที่กดเข้าแท็บนี้
+            loadPendingRequests(); 
         } else if (tab === 'report') {
             document.getElementById('tabReport').classList.add('active');
             document.getElementById('reportContentView').classList.remove('hidden');
@@ -543,9 +548,7 @@
     async function openBackerTeamModal() {
         const { data: backers } = await _supabase.from('users').select('*').eq('role', 'Backer').order('created_at', { ascending: true });
         currentBackers = backers || [];
-        
-        if (currentBackers.length > 3) currentBackers = currentBackers.slice(0, 3); // รับสูงสุดแค่ 3 คน
-        
+        if (currentBackers.length > 3) currentBackers = currentBackers.slice(0, 3); 
         renderBackerTeamUI();
         document.getElementById('backerTeamModal').classList.remove('hidden');
     }
@@ -557,19 +560,14 @@
     function renderBackerTeamUI() {
         const container = document.getElementById('backerTeamListContainer');
         container.innerHTML = '';
-        
         if (currentBackers.length === 0) {
             container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">ยังไม่มีคนรับจบในระบบ<br>กรุณาค้นหารหัสสมาชิกและเปลี่ยนสิทธิ์เป็น Backer ก่อนครับ</div>';
             return;
         }
         
-        let b1 = currentBackers[0];
-        let b2 = currentBackers[1] || null;
-        let b3 = currentBackers[2] || null;
-        
+        let b1 = currentBackers[0]; let b2 = currentBackers[1] || null; let b3 = currentBackers[2] || null;
         let html = '';
         
-        // คนที่ 1 (ตัวยืนพื้น)
         html += `
         <div style="background: #1a1e2f; padding: 15px; border-radius: 8px; border: 1px solid var(--blue-main);">
             <div style="font-weight: bold; color: white; margin-bottom: 8px;">1. ${b1.display_name} <span style="font-size: 0.8rem; color: var(--text-muted);">(${b1.member_id})</span></div>
@@ -585,7 +583,6 @@
             </div>
         </div>`;
         
-        // คนที่ 2
         if (b2) {
             html += `
             <div style="background: #0f111a; padding: 15px; border-radius: 8px; border: 1px solid var(--card-border);">
@@ -603,7 +600,6 @@
             </div>`;
         }
 
-        // คนที่ 3
         if (b3) {
             html += `
             <div style="background: #0f111a; padding: 15px; border-radius: 8px; border: 1px solid var(--card-border);">
@@ -628,7 +624,6 @@
     function calcBackerShares() {
         let s2 = document.getElementById('shareB2') ? parseFloat(document.getElementById('shareB2').value) || 0 : 0;
         let s3 = document.getElementById('shareB3') ? parseFloat(document.getElementById('shareB3').value) || 0 : 0;
-        
         let s1 = 100 - s2 - s3;
         
         let s1Elem = document.getElementById('shareB1');
@@ -643,26 +638,20 @@
         let s2 = document.getElementById('shareB2') ? parseFloat(document.getElementById('shareB2').value) || 0 : 0;
         let s3 = document.getElementById('shareB3') ? parseFloat(document.getElementById('shareB3').value) || 0 : 0;
         let s1 = 100 - s2 - s3;
-        
         let f1 = document.getElementById('feeB1') ? parseFloat(document.getElementById('feeB1').value) || 0 : 0;
         let f2 = document.getElementById('feeB2') ? parseFloat(document.getElementById('feeB2').value) || 0 : 0;
         let f3 = document.getElementById('feeB3') ? parseFloat(document.getElementById('feeB3').value) || 0 : 0;
 
         if (s1 < 0) return alert('ผลรวมสัดส่วนต้องไม่เกิน 100% กรุณาแก้ไขตัวเลขให้ถูกต้องครับ');
-        
         try {
             if (currentBackers[0]) await _supabase.from('users').update({ backer_share: s1, backer_water_fee: f1 }).eq('uid', currentBackers[0].uid);
             if (currentBackers[1]) await _supabase.from('users').update({ backer_share: s2, backer_water_fee: f2 }).eq('uid', currentBackers[1].uid);
             if (currentBackers[2]) await _supabase.from('users').update({ backer_share: s3, backer_water_fee: f3 }).eq('uid', currentBackers[2].uid);
-            
             alert('บันทึกสัดส่วนทีมรับจบเรียบร้อยแล้ว!');
             closeBackerTeamModal();
         } catch (e) { alert("ข้อผิดพลาดในการบันทึก: " + e.message); }
     }
 
-    // ==========================================
-    // จัดการสิทธิ์การค้นหาผู้ใช้
-    // ==========================================
     function checkRoleChange() {
         const role = document.getElementById('selChangeRole').value;
         document.getElementById('backerRoleNote').style.display = role === 'Backer' ? 'block' : 'none';
@@ -684,11 +673,10 @@
                 if(u.role === 'Operator') rCls = 'role-op'; 
                 else if(u.role === 'Admin' || u.role === 'Superadmin') rCls = 'role-admin'; 
                 else if(u.role === 'Backer') rCls = 'role-backer';
-                else if(u.role === 'Promoter') rCls = 'role-promoter'; // เพิ่มคลาสสีสำหรับ Promoter
+                else if(u.role === 'Promoter') rCls = 'role-promoter'; 
                 
                 document.getElementById('uManageRoleBadge').className = `badge-role ${rCls}`; 
                 document.getElementById('uManageRoleBadge').innerText = u.role || 'Customer'; 
-                
                 document.getElementById('selChangeRole').value = (u.role === 'Superadmin') ? 'Admin' : (u.role || 'Customer'); 
                 checkRoleChange();
 
@@ -702,58 +690,32 @@
     async function updateUserRole() { 
         if(!selectedUserIdForManage) return; 
         let nr = document.getElementById('selChangeRole').value; 
-        
         let updateData = { role: nr };
-        if(nr === 'Backer') {
-            // ถ้าพึ่งเพิ่มเป็น Backer ให้ใส่ share เป็น 0 ไว้ก่อนเพื่อให้ไปปรับในปุ่มจัดทีมรับจบ
-            updateData.backer_share = 0; 
-            updateData.backer_water_fee = 10;
-        }
-
+        if(nr === 'Backer') { updateData.backer_share = 0; updateData.backer_water_fee = 10; }
         await _supabase.from('users').update(updateData).eq('uid', selectedUserIdForManage); 
         
-        if(nr === 'Backer') {
-            alert(`อัปเดตเป็นพาร์ทเนอร์รับจบเรียบร้อย!\n\nกรุณากดปุ่ม "จัดทีมคนรับจบ" ที่มุมขวาบนของกล่อง เพื่อแบ่งสัดส่วน % ให้ถูกต้องครับ`); 
-        } else if (nr === 'Promoter') {
-            alert(`อัปเดตสิทธิ์เป็น "ผู้แนะนำ (Promoter)" เรียบร้อยแล้ว\nบัญชีนี้จะไม่สามารถเข้าเล่นเกมได้ แต่แนะนำเพื่อนได้ตามปกติครับ`);
-        } else {
-            alert(`อัปเดตสิทธิ์สำเร็จ`); 
-        }
+        if(nr === 'Backer') alert(`อัปเดตเป็นพาร์ทเนอร์รับจบเรียบร้อย!\n\nกรุณากดปุ่ม "จัดทีมคนรับจบ" ที่มุมขวาบนของกล่อง เพื่อแบ่งสัดส่วน % ให้ถูกต้องครับ`); 
+        else if (nr === 'Promoter') alert(`อัปเดตสิทธิ์เป็น "ผู้แนะนำ (Promoter)" เรียบร้อยแล้ว\nบัญชีนี้จะไม่สามารถเข้าเล่นเกมได้ แต่แนะนำเพื่อนได้ตามปกติครับ`);
+        else alert(`อัปเดตสิทธิ์สำเร็จ`); 
         
         document.getElementById('userInfoContainer').style.display = 'none'; document.getElementById('txtSearchUser').value = ''; 
     }
 
     // ==========================================
-    // คิวรอดำเนินการ (แก้ไขให้ดึงข้อมูลได้ชัวร์ขึ้น)
+    // คิวรอดำเนินการ 
     // ==========================================
     async function loadPendingRequests() {
        try {
-         // ดึงเฉพาะรายการที่ status เป็น 'Pending' เท่านั้น
-         const { data: reqs, error } = await _supabase.from('topup_requests')
-            .select('*')
-            .eq('status', 'Pending')
-            .order('created_at', { ascending: true });
-            
-         if (error) {
-            console.error("Error fetching pending requests:", error);
-            return;
-         }
+         const { data: reqs, error } = await _supabase.from('topup_requests').select('*').eq('status', 'Pending').order('created_at', { ascending: true });
+         if (error) { console.error("Error fetching pending requests:", error); return; }
 
          const badge = document.getElementById('badgePending');
-         if (reqs && reqs.length > 0) { 
-             badge.innerText = reqs.length; 
-             badge.style.display = 'inline-block'; 
-         } else { 
-             badge.style.display = 'none'; 
-         }
+         if (reqs && reqs.length > 0) { badge.innerText = reqs.length; badge.style.display = 'inline-block'; } 
+         else { badge.style.display = 'none'; }
 
          const listDiv = document.getElementById('pendingListContainer');
          listDiv.innerHTML = '';
-         
-         if(!reqs || reqs.length === 0) { 
-             listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ไม่มีรายการรอดำเนินการ</div>'; 
-             return; 
-         }
+         if(!reqs || reqs.length === 0) { listDiv.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ไม่มีรายการรอดำเนินการ</div>'; return; }
 
          reqs.forEach(r => {
              let typeColor = (r.type === 'ฝากเงิน' || r.type === 'โอนค่าคอม') ? 'var(--green-main)' : 'var(--red-main)';
@@ -763,9 +725,7 @@
              card.innerHTML = `<div style="display: flex; justify-content: space-between;"><div style="color: white; font-weight: bold;">${r.display_name} <span style="color: var(--text-muted); font-size: 0.8rem;">(${r.member_id})</span></div><div style="color: ${typeColor}; font-weight: bold; font-size: 1.1rem;">${r.type} ฿${r.amount}</div></div><div style="font-size: 0.85rem; color: var(--text-muted);"><div>ช่องทาง: ${r.method}</div><div>เวลา: ${new Date(r.created_at).toLocaleTimeString('th-TH')}</div></div>${slipBtn}<div style="display: flex; gap: 10px; margin-top: 10px;"><button class="btn btn-red" style="padding: 8px;" onclick="rejectPendingRequest(${r.id}, '${r.uid}', '${r.type}', ${r.amount})">ปฏิเสธ</button><button class="btn btn-green" style="padding: 8px;" onclick="approvePendingRequest(${r.id}, '${r.member_id}', '${r.uid}', '${r.type}', ${r.amount})">อนุมัติ</button></div>`;
              listDiv.appendChild(card);
          });
-       } catch (e) {
-           console.error("Exception in loadPendingRequests:", e);
-       }
+       } catch (e) { console.error("Exception in loadPendingRequests:", e); }
     }
 
     async function approvePendingRequest(id, targetId, uid, type, amount) {
@@ -773,7 +733,6 @@
         try {
             if (type === 'ฝากเงิน' || type === 'ถอนเงิน') {
                 const { data: u } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit, role, backer_wallet').eq('member_id', targetId).single();
-                
                 if (u.role === 'Backer') {
                     let newBackerBal = type === 'ฝากเงิน' ? (u.backer_wallet || 0) + amount : (u.backer_wallet || 0) - amount;
                     if (newBackerBal < 0) throw new Error("ยอดกระเป๋าเงินคนรับจบไม่พอให้ถอน");
@@ -787,9 +746,7 @@
                     await _supabase.from('users').update(updateData).eq('uid', u.uid);
                     notifyGAS('adminTopupComplete', { adminName: currentAdminName, type: type === 'ฝากเงิน' ? 'deposit' : 'withdraw', targetUid: u.uid, targetMemberId: targetId, amount: amount, newBalance: newBal });
                 }
-            } else if (type === 'ถอนค่าคอม') {
-                notifyGAS('approveAffiliateWithdraw', { uid: uid, amount: amount });
-            }
+            } else if (type === 'ถอนค่าคอม') { notifyGAS('approveAffiliateWithdraw', { uid: uid, amount: amount }); }
 
             await _supabase.from('transactions').insert([{ target_id: targetId, type: (type === 'ฝากเงิน') ? 'deposit' : (type === 'ถอนเงิน' ? 'withdraw' : 'aff_withdraw'), amount: amount, admin_name: currentAdminName, target_type: 'user' }]);
             await _supabase.from('topup_requests').update({ status: 'Approved', admin_name: currentAdminName }).eq('id', id);
@@ -824,9 +781,7 @@
       if(!selDate) return;
       
       let parts = selDate.split('-'); let yy = parts[0].substring(2); let mm = parts[1]; let dd = parts[2];
-      let prefix = `R-${yy}${mm}${dd}-`; 
-      let startD = new Date(selDate); startD.setHours(0,0,0,0);
-      let endD = new Date(selDate); endD.setHours(23,59,59,999);
+      let prefix = `R-${yy}${mm}${dd}-`; let startD = new Date(selDate); startD.setHours(0,0,0,0); let endD = new Date(selDate); endD.setHours(23,59,59,999);
       
       try {
         const { data: rounds } = await _supabase.from('rounds').select('*').like('round_id', `${prefix}%`).order('round_id', { ascending: false });
@@ -848,9 +803,7 @@
             const { data: bLogs } = await _supabase.from('backer_logs').select('pnl_amount').eq('round_id', r.round_id);
             let rBackerPnlTotal = 0;
             if (bLogs) { bLogs.forEach(bl => rBackerPnlTotal += Number(bl.pnl_amount)); }
-            
-            let rNet = (rTotBet - rTotPay) - rBackerPnlTotal; 
-            gNet += rNet; 
+            let rNet = (rTotBet - rTotPay) - rBackerPnlTotal; gNet += rNet; 
             
             let pCol = rNet >= 0 ? 'var(--green-main)' : 'var(--red-main)';
             let card = document.createElement('div'); card.style.cssText = "background: #0f111a; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;";
@@ -873,10 +826,7 @@
         if (allBLogs) {
             allBLogs.forEach(bl => {
                 if (!backerMap[bl.uid]) { backerMap[bl.uid] = { uid: bl.uid, name: '', share: bl.share_percent, feeRate: 0, totalExposure: 0, totalFeePaid: 0, totalPnl: 0, walletBalance: bl.wallet_balance_after }; }
-                backerMap[bl.uid].totalExposure += Number(bl.gap_amount);
-                backerMap[bl.uid].totalFeePaid += Number(bl.water_fee_deducted);
-                backerMap[bl.uid].totalPnl += Number(bl.pnl_amount);
-                backerMap[bl.uid].walletBalance = bl.wallet_balance_after; 
+                backerMap[bl.uid].totalExposure += Number(bl.gap_amount); backerMap[bl.uid].totalFeePaid += Number(bl.water_fee_deducted); backerMap[bl.uid].totalPnl += Number(bl.pnl_amount); backerMap[bl.uid].walletBalance = bl.wallet_balance_after; 
             });
         }
         
@@ -885,9 +835,7 @@
         if (backerUsers) {
             backerUsers.forEach(bu => {
                 if (backerMap[bu.uid]) {
-                    backerMap[bu.uid].name = bu.display_name;
-                    backerMap[bu.uid].feeRate = bu.backer_water_fee || 0;
-                    backerSummaries.push(backerMap[bu.uid]);
+                    backerMap[bu.uid].name = bu.display_name; backerMap[bu.uid].feeRate = bu.backer_water_fee || 0; backerSummaries.push(backerMap[bu.uid]);
                 }
             });
         }
@@ -916,20 +864,14 @@
         document.getElementById(`p_grossBet${paperType}`).innerText = rd.grossBet.toLocaleString(); document.getElementById(`p_payout${paperType}`).innerText = rd.payout.toLocaleString();
         document.getElementById(`p_cancelled${paperType}`).innerText = rd.cancelled.toLocaleString(); document.getElementById(`p_comm${paperType}`).innerText = rd.comm.toLocaleString();
         document.getElementById(`p_netProfit${paperType}`).innerText = rd.netProfit.toLocaleString();
-        
         document.getElementById(`p_depCount${paperType}`).innerText = rd.countDep + (paperType === 'A4' ? " รายการ" : ""); document.getElementById(`p_totalDep${paperType}`).innerText = rd.totalDep.toLocaleString();
         document.getElementById(`p_wdCount${paperType}`).innerText = rd.countWd + (paperType === 'A4' ? " รายการ" : ""); document.getElementById(`p_totalWd${paperType}`).innerText = rd.totalWd.toLocaleString();
         document.getElementById(`p_drawerNet${paperType}`).innerText = rd.drawerNet.toLocaleString();
-        
         document.getElementById(`p_roundTotal${paperType}`).innerText = rd.roundTotal; document.getElementById(`p_roundEven${paperType}`).innerText = rd.roundEven; document.getElementById(`p_roundOdd${paperType}`).innerText = rd.roundOdd;
         
-        document.getElementById('mainAppContainer').style.display = 'none'; 
-        document.getElementById('printAreaA4').classList.remove('layout-a4'); document.getElementById('printAreaA4').style.display = 'none'; 
-        document.getElementById('printAreaSlip').classList.remove('layout-slip'); document.getElementById('printAreaSlip').style.display = 'none';
-
+        document.getElementById('mainAppContainer').style.display = 'none'; document.getElementById('printAreaA4').classList.remove('layout-a4'); document.getElementById('printAreaA4').style.display = 'none'; document.getElementById('printAreaSlip').classList.remove('layout-slip'); document.getElementById('printAreaSlip').style.display = 'none';
         document.getElementById(targetDivId).style.display = 'block';
-        if(paperType === 'A4') document.getElementById(targetDivId).classList.add('layout-a4');
-        else document.getElementById(targetDivId).classList.add('layout-slip');
+        if(paperType === 'A4') document.getElementById(targetDivId).classList.add('layout-a4'); else document.getElementById(targetDivId).classList.add('layout-slip');
         
         setTimeout(() => { window.print(); document.getElementById('mainAppContainer').style.display = 'block'; document.getElementById(targetDivId).style.display = 'none'; }, 500);
     }
@@ -957,10 +899,7 @@
     async function fetchAdminDashboard() {
       try {
         let { data: rounds } = await _supabase.from('rounds').select('*').in('status', ['Open', 'Closed']).order('round_id', { ascending: false }).limit(1);
-        if(!rounds || rounds.length === 0) {
-           let { data: endedRounds } = await _supabase.from('rounds').select('*').eq('status', 'Ended').order('round_id', { ascending: false }).limit(1);
-           rounds = endedRounds;
-        }
+        if(!rounds || rounds.length === 0) { let { data: endedRounds } = await _supabase.from('rounds').select('*').eq('status', 'Ended').order('round_id', { ascending: false }).limit(1); rounds = endedRounds; }
 
         if(rounds && rounds.length > 0) {
           let r = rounds[0];
@@ -1029,13 +968,10 @@
     async function submitFinalize() {
       const btn = document.getElementById('btnFinalize');
       if (btn.disabled) return; 
-
       const w = document.getElementById('txtShrimpWeight').value;
       if (!w || w <= 0) return alert("กรุณากรอกน้ำหนักกุ้ง");
       if (!confirm(`ยืนยันการตัดผลที่น้ำหนัก ${w} กรัม?`)) return;
-
       btn.disabled = true; btn.innerText = 'รอแป๊บ...';
-
       try {
         const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล หรือรอบถูกตัดผลไปแล้ว");
@@ -1047,65 +983,40 @@
         const { data: bets, error: betsError } = await _supabase.from('bets').select('*').eq('round_id', roundId).neq('status', 'Cancelled');
         if (betsError) throw new Error("ดึงข้อมูลบิลไม่ได้: " + betsError.message);
 
-        // 🌟 1. ดึงเครดิตพาร์ทเนอร์รับจบมาเติมส่วนต่าง (Auto-Pool)
         let totalEven = 0, totalOdd = 0;
         if (bets && bets.length > 0) {
-            bets.forEach(b => {
-                if (b.bet_type === 'คู่') totalEven += b.amount;
-                if (b.bet_type === 'คี่') totalOdd += b.amount;
-            });
+            bets.forEach(b => { if (b.bet_type === 'คู่') totalEven += b.amount; if (b.bet_type === 'คี่') totalOdd += b.amount; });
         }
         
-        let gapAmount = Math.abs(totalEven - totalOdd);
-        let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
+        let gapAmount = Math.abs(totalEven - totalOdd); let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
         let backerNotifies = [];
         
         if (gapAmount > 0 && gapSide !== 'none') {
             const { data: backers } = await _supabase.from('users').select('*').eq('role', 'Backer');
             if (backers && backers.length > 0) {
                 for (let backer of backers) {
-                    let share = backer.backer_share || 0;
-                    if (share <= 0) continue;
-                    
-                    let myGap = gapAmount * (share / 100);
-                    let pnl = 0; let feePaid = 0; let isWin = false;
-                    
+                    let share = backer.backer_share || 0; if (share <= 0) continue;
+                    let myGap = gapAmount * (share / 100); let pnl = 0; let feePaid = 0; let isWin = false;
                     if (res === gapSide) {
                         let feeRate = (backer.backer_water_fee !== undefined && backer.backer_water_fee !== null) ? backer.backer_water_fee : 10;
-                        feePaid = myGap * (feeRate / 100);
-                        pnl = myGap - feePaid; 
-                        isWin = true;
-                    } else {
-                        pnl = -myGap;
-                        isWin = false;
-                    }
-                    
+                        feePaid = myGap * (feeRate / 100); pnl = myGap - feePaid; isWin = true;
+                    } else { pnl = -myGap; isWin = false; }
                     let newWalletBal = (backer.backer_wallet || 0) + pnl;
                     await _supabase.from('users').update({ backer_wallet: newWalletBal }).eq('uid', backer.uid);
-                    
-                    await _supabase.from('backer_logs').insert([{
-                        round_id: roundId, uid: backer.uid, member_id: backer.member_id,
-                        share_percent: share, gap_amount: myGap, result_status: isWin ? 'Win' : 'Lose',
-                        pnl_amount: pnl, water_fee_deducted: feePaid, wallet_balance_after: newWalletBal
-                    }]);
-                    
+                    await _supabase.from('backer_logs').insert([{ round_id: roundId, uid: backer.uid, member_id: backer.member_id, share_percent: share, gap_amount: myGap, result_status: isWin ? 'Win' : 'Lose', pnl_amount: pnl, water_fee_deducted: feePaid, wallet_balance_after: newWalletBal }]);
                     backerNotifies.push({ uid: backer.uid, pnl: pnl, walletBalance: newWalletBal });
                 }
             }
         }
 
-        // 🌟 2. จ่ายเงินลูกค้าผู้ชนะ
         let targetUids = new Set(); let winCount = 0;
         if (bets && bets.length > 0) {
           for (let bet of bets) {
             if (bet.uid) targetUids.add(bet.uid); 
             if (bet.status === 'Win' || bet.status === 'Lose') { if (bet.status === 'Win') winCount++; continue; }
-
             if (bet.bet_type === res) {
-              winCount++;
-              let profit = bet.amount * (1 - margin); let payout = bet.amount + profit;
+              winCount++; let profit = bet.amount * (1 - margin); let payout = bet.amount + profit;
               await _supabase.from('bets').update({ status: 'Win', payout: payout }).eq('bet_id', bet.bet_id);
-              
               if (bet.play_mode === 'table') {
                   const { data: tData } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single();
                   if(tData) await _supabase.from('tables').update({ credit: tData.credit + payout }).eq('table_no', bet.table_no);
@@ -1125,50 +1036,50 @@
         }
         
         await _supabase.from('rounds').update({ status: 'Ended', weight: w, result: res }).eq('round_id', roundId);
-        
-        let d = new Date(); let tzOffset = d.getTimezoneOffset() * 60000; let localISOTime = (new Date(d - tzOffset)).toISOString().slice(0, -1);
-        let todayStr = localISOTime.split('T')[0];
-
+        let d = new Date(); let tzOffset = d.getTimezoneOffset() * 60000; let localISOTime = (new Date(d - tzOffset)).toISOString().slice(0, -1); let todayStr = localISOTime.split('T')[0];
         const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00');
         if (activeBets) { activeBets.forEach(b => { if(b.uid) targetUids.add(b.uid); }); }
         
         if(targetUids.size > 0) notifyGAS('notifyUsersResult', { roundId: roundId, weight: w, result: res, winCount: winCount, targetUids: Array.from(targetUids) });
-        
         if (backerNotifies.length > 0) { notifyGAS('notifyBackerRoundResult', { roundId: roundId, weight: w, result: res, backerUids: backerNotifies }); }
         
         alert(`ตัดผลสำเร็จ! ผลคือ: ${res} (ชนะ ${winCount} บิล)`); document.getElementById('txtShrimpWeight').value = '';
       } catch (e) { alert("เกิดข้อผิดพลาดในการตัดผล: " + e.message); } 
-      finally { 
-        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); 
-        if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); }
-      }
+      finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
     }
 
-    // ฟังก์ชันยิบย่อย
+    // แก้ไขฟังก์ชันจัดการโหมดเติม/ถอน ให้ชัวร์เรื่องการเปลี่ยน Label และ Placeholder
     function setCreditMode(m) { 
         creditMode = m; 
         document.getElementById('creditModeTable').classList.remove('active'); 
         document.getElementById('creditModePrivate').classList.remove('active'); 
         document.getElementById(m==='table'?'creditModeTable':'creditModePrivate').classList.add('active'); 
         document.getElementById('targetLabel').innerText = m==='table'?"หมายเลขโต๊ะ":"รหัสลูกค้า (M000X)"; 
+        document.getElementById('txtTargetId').placeholder = m==='table'?"ระบุเบอร์โต๊ะ เช่น 4":"ระบุรหัส เช่น M0001";
+        document.getElementById('txtTargetId').value = ""; // เคลียร์ช่องให้กรอกใหม่เพื่อกันงง
     }
     
+    // แก้ไขฟังก์ชันเติมเงิน ให้ดึงโต๊ะแบบ String แทน Number เพื่อแก้ปัญหาตารางใน Supabase
     async function processCredit(type) {
       let tId = document.getElementById('txtTargetId').value.trim(); 
       let amountStr = document.getElementById('txtAmount').value;
       let amount = parseFloat(amountStr);
       
       if(!tId || !amountStr || isNaN(amount) || amount <= 0) return alert("กรุณากรอกข้อมูลให้ครบถ้วน"); 
-      if(!confirm(`ยืนยันการทำรายการ ${type === 'deposit' ? 'ฝาก' : 'ถอน'} ${amount} บาท ให้กับรหัส ${tId}?`)) return;
+      if(!confirm(`ยืนยันการทำรายการ ${type === 'deposit' ? 'ฝาก' : 'ถอน'} ${amount} บาท ให้กับ ${creditMode === 'table' ? 'โต๊ะ' : 'รหัส'} ${tId}?`)) return;
       
       try {
         if(creditMode === 'table') {
-          const { data: t, error: tableError } = await _supabase.from('tables').select('credit').eq('table_no', tId).single();
-          if(tableError || !t) throw new Error("ไม่พบเบอร์โต๊ะนี้ในระบบ");
+          // แปลง tId เป็น string เพื่อความชัวร์ในการค้นหา table_no
+          const { data: t, error: tableError } = await _supabase.from('tables').select('credit').eq('table_no', String(tId)).single();
+          if(tableError || !t) throw new Error("ไม่พบเบอร์โต๊ะนี้ในระบบ กรุณาตรวจสอบให้แน่ใจว่าสร้างโต๊ะนี้ไว้แล้ว");
+          
           let newBal = type === 'deposit' ? t.credit + amount : t.credit - amount;
           if (newBal < 0) throw new Error("ยอดเงินในโต๊ะไม่พอให้ถอน");
-          await _supabase.from('tables').update({ credit: newBal }).eq('table_no', tId);
+          
+          await _supabase.from('tables').update({ credit: newBal }).eq('table_no', String(tId));
           await _supabase.from('transactions').insert([{ target_id: 'โต๊ะ ' + tId, type: type, amount: amount, admin_name: currentAdminName, target_type: 'table' }]);
+          
           alert(`สำเร็จ!\nโต๊ะ: ${tId}\nเครดิตคงเหลือ: ฿${newBal.toLocaleString()}`);
         } else {
           const { data: u, error: userError } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit, role, backer_wallet').eq('member_id', tId).single();
