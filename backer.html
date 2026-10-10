@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Backer Dashboard - คนรับจบ</title>
+  <title>Backer Dashboard - บัญชีคนรับจบ</title>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -14,64 +14,168 @@
       --bg-dark: #12141e; --card-bg: #1c1e2b; --card-border: #2a2d3d;
       --text-main: #ffffff; --text-muted: #94a3b8;
       --blue-main: #3b82f6; --green-main: #10b981; --red-main: #ef4444; --yellow-main: #f59e0b;
+      --purple-main: #8b5cf6;
       --bg-panel: #161925;
     }
-    body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
+    body { font-family: 'Kanit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; -webkit-font-smoothing: antialiased; }
     .container { max-width: 480px; margin: 0 auto; padding-bottom: 50px; }
+    
     .header { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;}
-    .header-title { font-size: 1.3rem; font-weight: 600; color: #8b5cf6; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .wallet-box { background: #0f111a; border: 1px solid #8b5cf6; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 15px; }
-    .wallet-val { font-size: 2.2rem; font-weight: bold; color: var(--green-main); margin-top: 5px; }
-    .btn { width: 100%; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; font-weight: 600; cursor: pointer; color: white; background: #8b5cf6; }
+    .header-title { font-size: 1.3rem; font-weight: 600; color: var(--purple-main); }
+    
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    
+    .wallet-box { background: #0f111a; border: 1px solid var(--purple-main); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 15px; position: relative; overflow: hidden;}
+    .wallet-val { font-size: 2.5rem; font-weight: bold; color: var(--green-main); margin-top: 5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.2); }
+    
+    .stats-row { display: flex; justify-content: space-between; background: #1a1e2f; padding: 10px 15px; border-radius: 8px; margin-top: 15px; border: 1px solid rgba(139, 92, 246, 0.3); }
+    .stat-item { text-align: center; flex: 1; }
+    .stat-item:first-child { border-right: 1px solid var(--card-border); }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+    .stat-value { font-size: 1.1rem; font-weight: bold; color: var(--purple-main); }
+
+    .btn { width: 100%; border: none; padding: 14px; border-radius: 10px; font-family: 'Kanit'; font-size: 1.05rem; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+    .btn:active { transform: scale(0.98); }
+    .btn-purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+    .btn-outline { background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); box-shadow: none; }
+    .btn-blue { background: var(--blue-main); }
+    
+    .log-item { background: #0f111a; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .log-title { font-weight: bold; font-size: 1rem; color: white; }
+    .log-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
+    .log-amt { font-weight: bold; font-size: 1.2rem; }
+    .log-bal { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; text-align: right; }
+    
+    .hidden { display: none !important; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px; }
+    .form-control { width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: white; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; outline: none;}
+    .form-control:focus { border-color: var(--purple-main); }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="header-title"><i class="fa-solid fa-handshake-angle"></i> พาร์ทเนอร์รับจบ (Backer)</div>
-      <div id="backerName" style="color: var(--text-muted); font-size: 0.9rem;">กำลังโหลด...</div>
-    </div>
 
-    <div class="card">
-      <div class="wallet-box">
-        <div style="color: var(--text-muted); font-size: 0.9rem;">เครดิตค้ำประกันในระบบ</div>
-        <div class="wallet-val" id="backerWalletBal">฿0</div>
-        <div style="font-size: 0.8rem; color: #8b5cf6; margin-top: 8px;">สัดส่วนหุ้นรับจบ: <span id="backerSharePct">0</span>%</div>
+  <!-- Modal แจ้งฝาก/ถอน สำหรับ Backer -->
+  <div id="topupModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 1px solid var(--purple-main); border-radius: 16px; padding: 25px; width: 100%; max-width: 400px; position: relative; max-height: 90vh; overflow-y: auto;">
+      <h3 style="margin-top: 0; color: var(--purple-main); border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">
+        <i class="fa-solid fa-money-bill-transfer"></i> จัดการทุนรับจบ (ฝาก/ถอน)
+      </h3>
+      
+      <div class="form-group">
+        <label>ประเภทรายการ</label>
+        <select id="selTransactionType" class="form-control" onchange="toggleOptions()">
+          <option value="ฝากเงิน">ฝากเงิน (เพิ่มทุนค้ำประกัน)</option>
+          <option value="ถอนเงิน">ถอนเงิน (ถอนทุน/กำไร)</option>
+        </select>
       </div>
-      <button class="btn" onclick="alert('กรุณาติดต่อแอดมินหลักเพื่อเติมเครดิตค้ำประกันหรือถอนเงินสดครับ')">แจ้งเติม/ถอนเครดิต</button>
+
+      <div class="form-group">
+        <label>จำนวนเงิน (บาท)</label>
+        <input type="number" id="txtTopupAmount" class="form-control" placeholder="ระบุจำนวนเงิน" style="font-size: 1.2rem; font-weight: bold;">
+      </div>
+
+      <div class="form-group" id="paymentMethodSection">
+        <label>วิธีรับ/จ่ายเงิน</label>
+        <select id="selTopupMethod" class="form-control" onchange="toggleOptions()">
+          <option value="โอนเงิน">โอนเงินเข้าบัญชี</option>
+          <option value="เงินสด">เงินสด (รับ/จ่าย ที่ร้าน)</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="slipUploadSection">
+        <label>แนบสลิปโอนเงิน (บังคับ)</label>
+        <input type="file" id="fileSlip" accept="image/*" class="form-control" style="font-size: 0.85rem; padding: 10px;">
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 25px;">
+        <button onclick="closeTopupModal()" class="btn btn-outline" style="flex: 1; padding: 12px;">ยกเลิก</button>
+        <button id="btnSubmitTopup" onclick="submitTopupRequest()" class="btn btn-purple" style="flex: 1.5; padding: 12px;">ส่งแจ้งแอดมิน</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" id="mainContainer">
+    <div class="header">
+      <div class="header-title"><i class="fa-solid fa-handshake-angle"></i> พาร์ทเนอร์รับจบ</div>
+      <button onclick="window.location.href='index.html'" style="background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: 'Kanit'; font-size: 0.85rem; transition: 0.2s;">
+        <i class="fa-solid fa-arrow-left"></i> กลับหน้าหลัก
+      </button>
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0; color: var(--text-main); font-size: 1.1rem; border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">ประวัติการรับจบ (20 รายการล่าสุด)</h3>
-      <div id="backerLogsContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
-        <div style="text-align:center; color: var(--text-muted); padding: 20px;">กำลังโหลดประวัติ...</div>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+        <img id="backerPic" src="https://via.placeholder.com/150" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--purple-main); object-fit: cover;">
+        <div>
+          <div style="font-weight: bold; font-size: 1.1rem; color: white;" id="backerName">กำลังโหลด...</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">รหัสอ้างอิง: <span id="backerMemberId">-</span></div>
+        </div>
+      </div>
+
+      <div class="wallet-box">
+        <div style="color: var(--text-muted); font-size: 0.95rem;">เครดิตค้ำประกัน (ทุนรับจบ)</div>
+        <div class="wallet-val" id="backerWalletBal">฿0</div>
+        
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-label">สัดส่วนหุ้น</div>
+            <div class="stat-value"><span id="backerSharePct">0</span>%</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">หักค่าน้ำ</div>
+            <div class="stat-value"><span id="backerFeePct">0</span>%</div>
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn btn-purple" onclick="openTopupModal()">
+        <i class="fa-solid fa-money-bill-transfer"></i> แจ้งฝาก/ถอน ทุนรับจบ
+      </button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0; color: var(--text-main); font-size: 1.1rem; border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">
+        <i class="fa-solid fa-list-check"></i> ประวัติการรับจบ (20 รายการล่าสุด)
+      </h3>
+      <div id="backerLogsContainer" style="display: flex; flex-direction: column; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+        <div style="text-align:center; color: var(--text-muted); padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดประวัติ...</div>
       </div>
     </div>
   </div>
 
   <script>
     const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-    let currentUid = "";
+    let currentUser = null;
 
     async function initBacker() {
       try {
-        await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER }); // ใช้ LIFF เดียวกับผู้เล่นหรือสร้างแยกก็ได้
+        await liff.init({ liffId: APP_CONFIG.LIFF_ID_PLAYER }); 
         if (!liff.isLoggedIn()) { liff.login(); return; }
+        
         const profile = await liff.getProfile();
-        currentUid = profile.userId;
-
-        const { data: user } = await _supabase.from('users').select('*').eq('uid', currentUid).single();
+        
+        const { data: user } = await _supabase.from('users').select('*').eq('uid', profile.userId).single();
         if (!user || user.role !== 'Backer') {
-           document.body.innerHTML = `<div style="text-align:center; padding:50px; color:red; font-family:'Kanit';"><h3>ไม่มีสิทธิ์เข้าถึง</h3><p>บัญชีของคุณไม่ใช่สถานะพาร์ทเนอร์รับจบ (Backer)</p></div>`;
+           document.body.innerHTML = `<div style="text-align:center; padding:50px; color:red; font-family:'Kanit';">
+             <i class="fa-solid fa-triangle-exclamation" style="font-size: 4rem; margin-bottom: 20px;"></i>
+             <h3>ไม่มีสิทธิ์เข้าถึง</h3>
+             <p style="color: white;">บัญชีของคุณไม่ใช่สถานะพาร์ทเนอร์รับจบ (Backer)</p>
+             <button onclick="window.location.href='index.html'" class="btn btn-blue" style="margin-top:20px;">กลับหน้าหลัก</button>
+           </div>`;
            return;
         }
 
+        currentUser = user;
+        currentUser.profile_pic = profile.pictureUrl || 'https://via.placeholder.com/150';
+        
+        document.getElementById('backerPic').src = currentUser.profile_pic;
         document.getElementById('backerName').innerText = user.display_name;
+        document.getElementById('backerMemberId').innerText = user.member_id;
         document.getElementById('backerWalletBal').innerText = `฿${(user.backer_wallet || 0).toLocaleString()}`;
         document.getElementById('backerSharePct').innerText = user.backer_share || 0;
+        document.getElementById('backerFeePct').innerText = user.backer_water_fee !== null ? user.backer_water_fee : 10;
 
-        loadBackerLogs(currentUid);
+        loadBackerLogs(user.uid);
       } catch (e) { alert("Error: " + e.message); }
     }
 
@@ -80,31 +184,121 @@
       try {
         const { data: logs } = await _supabase.from('backer_logs').select('*').eq('uid', uid).order('created_at', { ascending: false }).limit(20);
         container.innerHTML = '';
+        
         if (!logs || logs.length === 0) {
            container.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 15px;">ยังไม่มีประวัติการรับจบ</div>';
            return;
         }
 
         logs.forEach(l => {
-           let color = l.pnl_amount >= 0 ? 'var(--green-main)' : 'var(--red-main)';
-           let sign = l.pnl_amount >= 0 ? '+' : '';
+           let isWin = l.result_status === 'Win';
+           let color = isWin ? 'var(--green-main)' : 'var(--red-main)';
+           let sign = isWin ? '+' : '';
            let timeStr = new Date(l.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
            let div = document.createElement('div');
-           div.style.cssText = "background: #0f111a; padding: 12px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;";
+           div.className = 'log-item';
            div.innerHTML = `
              <div>
-               <div style="font-weight: bold; font-size: 1rem;">รอบ ${l.round_id} (${l.result_status})</div>
-               <div style="font-size: 0.8rem; color: var(--text-muted);">${timeStr} | ส่วนต่างที่ลงขัน: ฿${l.gap_amount.toLocaleString()}</div>
+               <div class="log-title">รอบ ${l.round_id}</div>
+               <div class="log-sub"><i class="fa-regular fa-clock"></i> ${timeStr} | ทุนที่ลง: ฿${l.gap_amount.toLocaleString()}</div>
              </div>
-             <div style="text-align: right;">
-               <div style="font-weight: bold; font-size: 1.1rem; color: ${color};">${sign}฿${l.pnl_amount.toLocaleString()}</div>
-               <div style="font-size: 0.75rem; color: var(--text-muted);">คงเหลือ ฿${l.wallet_balance_after.toLocaleString()}</div>
+             <div>
+               <div class="log-amt" style="color: ${color}; text-align: right;">${sign}฿${Math.abs(l.pnl_amount).toLocaleString()}</div>
+               <div class="log-bal">คงเหลือ ฿${l.wallet_balance_after.toLocaleString()}</div>
              </div>
            `;
            container.appendChild(div);
         });
       } catch (e) { container.innerHTML = '<div style="color:red; text-align:center;">โหลดประวัติไม่สำเร็จ</div>'; }
+    }
+
+    // =====================================
+    // ระบบแจ้งฝาก/ถอน สำหรับ Backer
+    // =====================================
+    function openTopupModal() {
+      document.getElementById('topupModal').classList.remove('hidden');
+      toggleOptions();
+    }
+    
+    function closeTopupModal() { 
+      document.getElementById('topupModal').classList.add('hidden'); 
+      document.getElementById('txtTopupAmount').value = ''; 
+      document.getElementById('fileSlip').value = '';
+      document.getElementById('btnSubmitTopup').disabled = false; 
+      document.getElementById('btnSubmitTopup').innerHTML = 'ส่งแจ้งแอดมิน';
+    }
+
+    function toggleOptions() {
+      const type = document.getElementById('selTransactionType').value; 
+      const method = document.getElementById('selTopupMethod').value;
+      
+      if (type === 'ถอนเงิน') { 
+          document.getElementById('paymentMethodSection').style.display = 'none'; 
+          document.getElementById('slipUploadSection').style.display = 'none';
+      } else { 
+          document.getElementById('paymentMethodSection').style.display = 'block'; 
+          if (method === 'โอนเงิน') document.getElementById('slipUploadSection').style.display = 'block';
+          else document.getElementById('slipUploadSection').style.display = 'none';
+      }
+    }
+
+    function compressImageAndGetBase64(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader(); reader.readAsDataURL(file);
+        reader.onload = function (event) {
+          const img = new Image(); img.src = event.target.result;
+          img.onload = function () {
+            const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; 
+            let scaleSize = Math.min(MAX_WIDTH / img.width, 1);
+            canvas.width = img.width * scaleSize; canvas.height = img.height * scaleSize;
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]); 
+          }
+        };
+      });
+    }
+
+    async function submitTopupRequest() {
+      const type = document.getElementById('selTransactionType').value;
+      const amount = parseFloat(document.getElementById('txtTopupAmount').value);
+      const method = type === 'ถอนเงิน' ? 'โอนเงิน' : document.getElementById('selTopupMethod').value;
+      const btnSubmit = document.getElementById('btnSubmitTopup');
+      
+      if (!amount || isNaN(amount) || amount <= 0) { alert("ระบุจำนวนเงินให้ถูกต้อง"); return; }
+      if (type === 'ถอนเงิน' && amount > (currentUser.backer_wallet || 0)) { alert("ยอดทุนรับจบไม่เพียงพอให้ถอนครับ"); return; }
+
+      let slipBase64 = "", slipMime = "";
+      if (type === 'ฝากเงิน' && method === 'โอนเงิน') {
+         const fileInput = document.getElementById('fileSlip');
+         if (fileInput.files.length === 0) { alert("กรุณาแนบรูปสลิปโอนเงินด้วยครับ"); return; }
+         slipMime = 'image/jpeg';
+         btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บีบอัดสลิป...';
+         slipBase64 = await compressImageAndGetBase64(fileInput.files[0]);
+      }
+
+      btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งข้อมูล...';
+      
+      const payload = { 
+        action: 'requestTopup', uid: currentUser.uid, memberId: currentUser.member_id, 
+        displayName: currentUser.display_name + " (รับจบ)", profilePic: currentUser.profile_pic,
+        type: type, amount: amount, method: method, feeOption: '-', slipBase64: slipBase64, slipMimeType: slipMime
+      };
+
+      try {
+        const response = await fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+        const res = await response.json();
+        
+        if(res.status === 'success') { 
+           await _supabase.from('topup_requests').insert([{
+              uid: currentUser.uid, member_id: currentUser.member_id, display_name: currentUser.display_name + " (รับจบ)",
+              type: type, amount: amount, method: method, fee_option: '-', slip_url: res.fileUrl || '', status: 'Pending'
+           }]);
+
+           alert(`ส่งแจ้ง ${type} ทุนรับจบสำเร็จ!\nระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
+           closeTopupModal(); 
+        } else { alert("ข้อผิดพลาด: " + res.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
+      } catch (error) { alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
     }
 
     initBacker();
