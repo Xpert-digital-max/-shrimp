@@ -129,7 +129,7 @@
         </select>
       </div>
 
-      <!-- ช่องอัปโหลดสลิป (จะโชว์เฉพาะตอนเลือกว่า ฝากเงิน และ โอนเงิน) -->
+      <!-- ช่องอัปโหลดสลิป -->
       <div style="margin-bottom: 20px; display: block;" id="slipUploadSection">
         <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">แนบสลิปโอนเงิน (บังคับ)</label>
         <input type="file" id="fileSlip" accept="image/*" style="width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: white; padding: 10px; border-radius: 8px; font-family: 'Kanit'; font-size: 0.9rem; outline: none;">
@@ -177,6 +177,7 @@
       </div>
     </div>
 
+    <!-- หน้าหลัก: แทงกุ้ง -->
     <div id="bettingView" class="hidden">
       <div class="mode-selector">
         <div class="mode-btn" id="modeTable" onclick="setMode('table')">เล่นแบบลงโต๊ะ</div>
@@ -246,6 +247,36 @@
       </div>
     </div>
     
+    <!-- หน้า 2: สถิติและผลรอบ -->
+    <div id="statsView" class="hidden">
+      <h3 style="margin-top:0; color: var(--text-main);"><i class="fa-solid fa-chart-pie"></i> สถิติการออกรางวัลวันนี้</h3>
+      
+      <!-- กล่องสถิติ 3 กล่อง -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+        <div style="background: var(--bg-panel); padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid var(--card-border);">
+          <div style="font-size: 0.8rem; color: var(--text-muted);">เล่นไปแล้ว</div>
+          <div style="font-size: 1.5rem; font-weight: bold; color: white;" id="statTotalRounds">0</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">รอบ</div>
+        </div>
+        <div style="background: #1a1e2f; padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid rgba(59, 130, 246, 0.3);">
+          <div style="font-size: 0.8rem; color: var(--blue-main);">ออกคู่ (Even)</div>
+          <div style="font-size: 1.5rem; font-weight: bold; color: white;" id="statEvenCount">0</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">รอบ</div>
+        </div>
+        <div style="background: #23161c; padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.3);">
+          <div style="font-size: 0.8rem; color: var(--red-main);">ออกคี่ (Odd)</div>
+          <div style="font-size: 1.5rem; font-weight: bold; color: white;" id="statOddCount">0</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">รอบ</div>
+        </div>
+      </div>
+
+      <h4 style="margin-bottom: 15px; color: var(--text-main);">ประวัติรอบวันนี้</h4>
+      <div id="statsListContainer" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 30px;">
+        <div style="text-align:center; color: var(--text-muted); padding: 20px;">กำลังโหลด...</div>
+      </div>
+    </div>
+    
+    <!-- หน้า 3: ประวัติการแทงของฉัน -->
     <div id="historyView" class="hidden">
       <h3 style="margin-top:0; color: var(--text-main);">ประวัติการเล่น (20 บิลล่าสุด)</h3>
       <div id="historyList">
@@ -258,7 +289,7 @@
     <div class="nav-item active" onclick="switchTab('bet')">
       <i class="fa-solid fa-bullseye"></i><span>แทง</span>
     </div>
-    <div class="nav-item" onclick="alert('ผลรอบล่าสุดจะแสดงในหน้าแทงครับ')">
+    <div class="nav-item" onclick="switchTab('stats')">
       <i class="fa-solid fa-receipt"></i><span>ผลรอบ</span>
     </div>
     <div class="nav-item" onclick="switchTab('history')">
@@ -366,6 +397,7 @@
         } else {
           document.getElementById('bettingView').classList.add('hidden');
           document.getElementById('historyView').classList.add('hidden');
+          document.getElementById('statsView').classList.add('hidden');
           document.getElementById('pendingView').classList.remove('hidden');
           document.getElementById('bottomNavMenu').style.display = 'none'; 
         }
@@ -398,15 +430,80 @@
 
     function switchTab(tab) {
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      
+      // ปิดทุกหน้าก่อน
+      document.getElementById('bettingView').classList.add('hidden');
+      document.getElementById('historyView').classList.add('hidden');
+      document.getElementById('statsView').classList.add('hidden');
+      
       if (tab === 'bet') {
         document.getElementById('bettingView').classList.remove('hidden');
-        document.getElementById('historyView').classList.add('hidden');
         document.querySelectorAll('.nav-item')[0].classList.add('active');
+      } else if (tab === 'stats') {
+        document.getElementById('statsView').classList.remove('hidden');
+        document.querySelectorAll('.nav-item')[1].classList.add('active');
+        loadDailyStats(); // เรียกใช้ฟังก์ชันดึงสถิติ
       } else if (tab === 'history') {
-        document.getElementById('bettingView').classList.add('hidden');
         document.getElementById('historyView').classList.remove('hidden');
         document.querySelectorAll('.nav-item')[2].classList.add('active');
         loadHistory(); 
+      }
+    }
+
+    // =====================================
+    // ฟังก์ชันใหม่: ดึงสถิติรายวัน
+    // =====================================
+    async function loadDailyStats() {
+      const listContainer = document.getElementById('statsListContainer');
+      listContainer.innerHTML = '<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</div>';
+      
+      let d = new Date();
+      let prefix = `R-${d.getFullYear().toString().substring(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-`;
+      
+      try {
+        const { data: rounds, error } = await _supabase.from('rounds')
+          .select('round_id, weight, result, created_at')
+          .like('round_id', `${prefix}%`)
+          .eq('status', 'Ended')
+          .order('round_id', { ascending: false });
+
+        if (error) throw error;
+
+        let total = 0, evenCount = 0, oddCount = 0;
+        listContainer.innerHTML = '';
+
+        if (rounds && rounds.length > 0) {
+          total = rounds.length;
+          rounds.forEach(r => {
+            if (r.result === 'คู่') evenCount++;
+            if (r.result === 'คี่') oddCount++;
+
+            let typeColor = r.result === 'คู่' ? 'var(--blue-main)' : 'var(--red-main)';
+            let timeStr = new Date(r.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            
+            let card = document.createElement('div');
+            card.style.cssText = "background: var(--bg-panel); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center;";
+            card.innerHTML = `
+              <div>
+                <div style="font-weight: 600; font-size: 1.1rem;">รอบ ${r.round_id}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-regular fa-clock"></i> ${timeStr} | น้ำหนัก: ${r.weight} กรัม</div>
+              </div>
+              <div style="font-weight: bold; font-size: 1.4rem; color: ${typeColor};">
+                ${r.result}
+              </div>
+            `;
+            listContainer.appendChild(card);
+          });
+        } else {
+          listContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 20px;">ยังไม่มีข้อมูลผลรอบของวันนี้</div>';
+        }
+
+        document.getElementById('statTotalRounds').innerText = total;
+        document.getElementById('statEvenCount').innerText = evenCount;
+        document.getElementById('statOddCount').innerText = oddCount;
+
+      } catch (e) {
+        listContainer.innerHTML = '<div style="text-align:center; color: var(--red-main); padding: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
       }
     }
 
@@ -466,7 +563,6 @@
         const { data: uData } = await _supabase.from('users').select('credit_balance').eq('uid', currentLineUserId).single();
         if(uData) document.getElementById('creditDisplay').innerText = `฿${uData.credit_balance.toLocaleString()}`;
 
-        // แก้ไขให้ดึงรอบล่าสุดตามรอบเวลาจริงๆ โดยเรียงตาม round_id เหมือนไฟล์ admin เพื่อป้องกันปัญหาวันที่ NULL 
         const { data: rounds } = await _supabase.from('rounds').select('*').order('round_id', { ascending: false }).limit(2);
         
         if (rounds && rounds.length > 0) {
@@ -650,9 +746,6 @@
       } catch (error) { alert("ข้อผิดพลาด"); }
     }
 
-    // ==========================================
-    // ระบบฝากถอน และบีบอัดรูปสลิปส่งเข้า GAS (อัปเดตใหม่)
-    // ==========================================
     function openTopupModal() {
       if (currentUserStatus !== 'Active') { alert("บัญชียังไม่เปิดใช้งาน"); return; }
       document.getElementById('topupModal').classList.remove('hidden');
@@ -661,7 +754,6 @@
     
     function closeTopupModal() { 
       document.getElementById('topupModal').classList.add('hidden'); 
-      // รีเซ็ตฟอร์ม
       document.getElementById('txtTopupAmount').value = '';
       document.getElementById('fileSlip').value = '';
       document.getElementById('btnSubmitTopup').disabled = false;
@@ -674,7 +766,7 @@
       
       if (type === 'ถอนเงิน') {
          document.getElementById('withdrawOptionsSection').style.display = 'block';
-         document.getElementById('paymentMethodSection').style.display = 'none'; // ถอนบังคับโอนเงินเท่านั้น
+         document.getElementById('paymentMethodSection').style.display = 'none'; 
       } else {
          document.getElementById('withdrawOptionsSection').style.display = 'none';
          document.getElementById('paymentMethodSection').style.display = 'block';
@@ -684,7 +776,6 @@
       else document.getElementById('slipUploadSection').style.display = 'none';
     }
 
-    // ฟังก์ชันบีบอัดภาพเพื่อป้องกันเว็บค้าง
     function compressImageAndGetBase64(file) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -704,7 +795,7 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // ย่อขนาดให้เหลือ 60%
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
             resolve(dataUrl.split(',')[1]); 
           }
         };
