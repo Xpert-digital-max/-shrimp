@@ -102,6 +102,7 @@
   <div id="gapResolutionModal" class="hidden no-print" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 1px solid var(--red-main); border-radius: 16px; padding: 25px; width: 100%; max-width: 400px; text-align: center; position: relative; box-shadow: 0 0 20px rgba(239,68,68,0.3);">
       <h2 style="margin-top: 0; color: var(--red-main);"><i class="fa-solid fa-triangle-exclamation"></i> ยอดแทงไม่สมดุล!</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">ระบบทำการปิดรับแทงแล้ว กรุณาเลือกว่าจะให้ใครรับจบส่วนต่างนี้ก่อนทำการชั่งกุ้ง</p>
       
       <div style="background: #0f111a; border-radius: 12px; padding: 15px; text-align: left; margin-bottom: 20px; border: 1px solid var(--card-border);">
          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
@@ -116,23 +117,18 @@
             <span style="color: var(--yellow-main);">ขาดส่วนต่าง:</span>
             <span id="gapModalMissing" style="font-weight: bold; color: var(--yellow-main); font-size: 1.1rem;">-</span>
          </div>
-         <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">น้ำหนักชั่งได้:</span>
-            <span id="gapModalWeight" style="font-weight: bold; color: white;">-</span>
-         </div>
       </div>
-
-      <h4 style="margin-top: 0; margin-bottom: 15px; color: white;">กรุณาเลือกว่าจะให้ใครเป็นคนรับยอดส่วนต่างนี้?</h4>
       
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button onclick="executeFinalize('backer')" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1.1rem; font-weight: bold; cursor: pointer;">
+        <button id="btnGapBacker" onclick="saveGapDecision('backer')" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1.1rem; font-weight: bold; cursor: pointer;">
            <i class="fa-solid fa-users"></i> ให้ทีม Backer รับจบ (ตัดทุน)
         </button>
-        <button onclick="executeFinalize('shop')" style="background: var(--blue-main); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; font-weight: bold; cursor: pointer;">
+        <button id="btnGapShop" onclick="saveGapDecision('shop')" style="background: var(--blue-main); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; font-weight: bold; cursor: pointer;">
            <i class="fa-solid fa-store"></i> ร้านรับความเสี่ยงเอง
         </button>
-        <button onclick="closeGapModal()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); padding: 10px; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; margin-top: 5px;">
-           ยกเลิก / กลับไปแก้ไข
+        <!-- ปุ่มยกเลิกนี้จะทำการเปิดรับแทงกลับมาเหมือนเดิม -->
+        <button onclick="cancelGapDecision()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); padding: 10px; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; margin-top: 5px;">
+           ยกเลิก / กลับไปเปิดรับแทงต่อ
         </button>
       </div>
     </div>
@@ -198,13 +194,19 @@
         </div>
         <div class="btn-group">
           <button class="btn btn-green" id="btnOpenRound" onclick="controlRound('createRound')"><i class="fa-solid fa-play"></i> 1. เปิดรอบใหม่</button>
-          <button class="btn btn-yellow" onclick="controlRound('closeBetting')"><i class="fa-solid fa-pause"></i> 2. ปิดรับแทง</button>
+          <button class="btn btn-yellow" id="btnCloseBetting" onclick="prepareCloseBetting()"><i class="fa-solid fa-pause"></i> 2. ปิดรับแทง</button>
         </div>
+        
+        <!-- ซ่อนข้อความแจ้งเตือนว่าให้ใครรับจบ ไว้ใต้ปุ่มปิดรับแทง -->
+        <div id="resolverStatusMsg" style="display: none; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; padding: 10px; border-radius: 8px; text-align: center; color: #8b5cf6; font-size: 0.9rem; margin-bottom: 15px;">
+           <i class="fa-solid fa-check-circle"></i> ยืนยันการรับจบโดย: <span id="txtResolverName" style="font-weight: bold;">-</span>
+        </div>
+
         <div class="form-group" style="border-top: 1px dashed var(--card-border); padding-top: 15px; margin-bottom: 0;">
           <label>น้ำหนักกุ้ง (กรัม)</label>
           <div style="display: flex; gap: 10px;">
             <input type="number" id="txtShrimpWeight" class="form-control" placeholder="เช่น 54" style="flex: 2;">
-            <button class="btn btn-orange" id="btnFinalize" style="flex: 1;" onclick="prepareFinalize()"><i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล</button>
+            <button class="btn btn-orange" id="btnFinalize" style="flex: 1;" onclick="submitFinalize()"><i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล</button>
           </div>
         </div>
       </div>
@@ -442,6 +444,9 @@
     let currentOpId = "", currentAdminName = "", creditMode = "private", currentUserRole = "Customer", selectedUserIdForManage = ""; 
     let targetEndTimeMs = null, isRoundOpen = false;
 
+    // ตัวแปรสำหรับเก็บข้อมูลรอบที่กำลังจะปิด
+    let pendingRoundIdToClose = "";
+
     async function notifyGAS(action, payloadData) {
       try { fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify({ action: action, ...payloadData }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }); } catch (e) {}
     }
@@ -469,13 +474,11 @@
              let dataParts = payloadData.split('_'); 
              if (dataParts.length === 3) {
                  let t_mid = dataParts[0]; let t_amt = dataParts[1]; let t_type_code = dataParts[2];
-                 
                  switchAdminTab('control');
                  document.getElementById('creditModePrivate').click(); 
                  document.getElementById('txtTargetId').value = t_mid;
                  document.getElementById('txtAmount').value = t_amt;
                  document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
-                 
                  alert(`มีคำขอรายการใหม่จาก LINE!\n\nรหัส: ${t_mid}\nยอด: ${t_amt} ฿\n\nระบบกรอกข้อมูลในช่อง เติม/ถอน ให้แล้ว โปรดตรวจสอบและกดยืนยันรายการครับ`);
                  history.replaceState(null, null, ' '); 
              }
@@ -700,7 +703,7 @@
         if(nr === 'Backer') { updateData.backer_share = 0; updateData.backer_water_fee = 10; }
         await _supabase.from('users').update(updateData).eq('uid', selectedUserIdForManage); 
         
-        if(nr === 'Backer') alert(`อัปเดตเป็นพาร์ทเนอร์รับจบเรียบร้อย!\n\nกรุณากดปุ่ม "จัดทีมคนรับจบ" ที่มุมขวาบนของกล่อง เพื่อแบ่งสัดส่วน % ให้ถูกต้องครับ`); 
+        if(nr === 'Backer') alert(`อัปเดตเป็นพาร์ทเนอร์รับจบเรียบร้อย!\n\nกรุณากดปุ่ม "จัดทีมคนรับจบ" ด้านบนเพื่อแบ่งสัดส่วน % ให้ถูกต้องครับ`); 
         else if (nr === 'Promoter') alert(`อัปเดตสิทธิ์เป็น "ผู้แนะนำ (Promoter)" เรียบร้อยแล้ว\nบัญชีนี้จะไม่สามารถเข้าเล่นเกมได้ แต่แนะนำเพื่อนได้ตามปกติครับ`);
         else alert(`อัปเดตสิทธิ์สำเร็จ`); 
         
@@ -745,13 +748,10 @@
 
     function handlePendingRequest(reqId, targetMemberId, amount, type) {
         document.getElementById('txtPendingRequestId').value = reqId; 
-        
         switchAdminTab('control'); 
         document.getElementById('creditModePrivate').click(); 
-        
         document.getElementById('txtTargetId').value = targetMemberId;
         document.getElementById('txtAmount').value = amount;
-        
         document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
         
         if (type === 'ถอนค่าคอม') {
@@ -889,17 +889,25 @@
     }
 
     // ==========================================
-    // ฟังก์ชันควบคุมการจัดการตัดผล (Auto-Pool & Gap Resolution)
+    // ฟังก์ชันควบคุมการจัดการตัดผล (ระบบยืนยันก่อนชั่งกุ้ง)
     // ==========================================
-    let pendingFinalizeData = null; // ตัวแปรเก็บค่าชั่วคราวรอแอดมินยืนยัน
-
     function startAdminTimer() {
       setInterval(() => {
         let el = document.getElementById('adminRoundSubInfo');
         if (!isRoundOpen || !targetEndTimeMs) return;
         let dist = targetEndTimeMs - new Date().getTime();
-        if (dist <= 0) { el.innerText = "หมดเวลาแทง • รอแอดมินปิดรับแทง/ตัดผล"; el.style.color = "var(--red-main)"; } 
-        else { let m = Math.floor((dist % 3600000) / 60000); let s = Math.floor((dist % 60000) / 1000); el.innerText = `เปิดอยู่ • เหลือเวลา ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; el.style.color = "var(--yellow-main)"; }
+        
+        if (dist <= 0 && isRoundOpen) { 
+            // เมื่อหมดเวลา ให้ปิดรับแทงอัตโนมัติ และแสดง Modal ตรวจสอบส่วนต่าง
+            el.innerText = "หมดเวลาแทง • กำลังปิดรอบ..."; 
+            el.style.color = "var(--red-main)"; 
+            prepareCloseBetting(); // เรียกฟังก์ชันเช็ค Gap
+        } 
+        else if (dist > 0) { 
+            let m = Math.floor((dist % 3600000) / 60000); let s = Math.floor((dist % 60000) / 1000); 
+            el.innerText = `เปิดอยู่ • เหลือเวลา ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; 
+            el.style.color = "var(--yellow-main)"; 
+        }
       }, 1000);
     }
 
@@ -913,10 +921,33 @@
           document.getElementById('adminRoundId').innerText = `รอบ ${r.round_id}`;
           targetEndTimeMs = r.end_time_ms || 0; let now = new Date().getTime();
           let badge = document.getElementById('adminStatusBadge');
+          let subInfo = document.getElementById('adminRoundSubInfo');
 
-          if (r.status === 'Open' && now < targetEndTimeMs) { badge.innerHTML = `● เปิดรับแทง`; badge.style.color = "var(--green-main)"; badge.style.background = "rgba(16,185,129,0.2)"; isRoundOpen = true; } 
-          else if (r.status === 'Open' || r.status === 'Closed') { badge.innerHTML = `● ปิดรับแทง`; badge.style.color = "var(--red-main)"; badge.style.background = "rgba(239,68,68,0.2)"; document.getElementById('adminRoundSubInfo').innerText = `สถานะ: รอแอดมินชั่งกุ้งและตัดผล`; document.getElementById('adminRoundSubInfo').style.color = "var(--text-muted)"; isRoundOpen = false; targetEndTimeMs = 0; } 
-          else { badge.innerHTML = `● จบรอบแล้ว`; badge.style.color = "var(--text-muted)"; badge.style.background = "rgba(148,163,184,0.2)"; document.getElementById('adminRoundSubInfo').innerText = `ผลรอบนี้: ${r.result} (${r.weight} กรัม)`; document.getElementById('adminRoundSubInfo').style.color = "var(--text-muted)"; isRoundOpen = false; targetEndTimeMs = 0; }
+          if (r.status === 'Open' && now < targetEndTimeMs) { 
+              badge.innerHTML = `● LIVE`; badge.style.color = "var(--green-main)"; badge.style.background = "rgba(16,185,129,0.2)"; 
+              isRoundOpen = true; 
+          } 
+          else if (r.status === 'Open' || r.status === 'Closed') { 
+              badge.innerHTML = `● ปิดรับแทง`; badge.style.color = "var(--red-main)"; badge.style.background = "rgba(239,68,68,0.2)"; 
+              isRoundOpen = false; targetEndTimeMs = 0; 
+              
+              if (r.resolver_type && r.resolver_type !== 'none') {
+                  subInfo.innerText = `รอแอดมินใส่ผลกุ้งเพื่อตัดผล`;
+                  subInfo.style.color = "var(--text-muted)";
+                  document.getElementById('resolverStatusMsg').style.display = 'block';
+                  document.getElementById('txtResolverName').innerText = r.resolver_type === 'backer' ? 'ทีม Backer' : 'ร้านค้ารับเอง';
+              } else {
+                  subInfo.innerText = `รอแอดมินยืนยันผู้รับจบยอดส่วนต่าง`;
+                  subInfo.style.color = "var(--yellow-main)";
+                  document.getElementById('resolverStatusMsg').style.display = 'none';
+              }
+          } 
+          else { 
+              badge.innerHTML = `● จบรอบแล้ว`; badge.style.color = "var(--text-muted)"; badge.style.background = "rgba(148,163,184,0.2)"; 
+              subInfo.innerText = `ผลรอบนี้: ${r.result} (${r.weight} กรัม)`; subInfo.style.color = "var(--text-muted)"; 
+              isRoundOpen = false; targetEndTimeMs = 0; 
+              document.getElementById('resolverStatusMsg').style.display = 'none';
+          }
 
           const { data: bets } = await _supabase.from('bets').select('*').eq('round_id', r.round_id).neq('status', 'Cancelled').order('bet_id', { ascending: false });
           let ea=0, oa=0; let et=new Set(), ot=new Set(); let fl = document.getElementById('liveBetsFeedList'); fl.innerHTML = '';
@@ -947,46 +978,133 @@
           let rndName = `${prefix}-${nn}`;
           const { data: set } = await _supabase.from('system_settings').select('round_duration').eq('id', 1).single();
           let duration = set ? set.round_duration : 15;
-          await _supabase.from('rounds').insert([{ round_id: rndName, status: 'Open', end_time_ms: new Date().getTime() + (duration * 60000) }]);
+          await _supabase.from('rounds').insert([{ round_id: rndName, status: 'Open', end_time_ms: new Date().getTime() + (duration * 60000), resolver_type: 'none' }]);
+          
           let todayStr = new Date().toISOString().split('T')[0];
           const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
           let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
           notifyGAS('notifyRoundStatusToUsers', { status: 'Open', roundId: rndName, duration: duration, targetUids: activeUids });
+          
+          document.getElementById('resolverStatusMsg').style.display = 'none';
           alert(`เปิดรอบ ${rndName} สำเร็จ!`);
         } catch(e) { alert(e.message); }
         document.getElementById('btnOpenRound').innerHTML = '<i class="fa-solid fa-play"></i> 1. เปิดรอบใหม่'; fetchAdminDashboard();
-      } else if (cmd === 'closeBetting') {
-        if(!confirm('ยืนยันการปิดรับแทง?')) return;
-        try {
-          const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
-          if (lr && lr.length > 0 && lr[0].status === 'Open') {
-             await _supabase.from('rounds').update({ status: 'Closed' }).eq('round_id', lr[0].round_id);
-             let todayStr = new Date().toISOString().split('T')[0];
-             const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
-             let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
-             notifyGAS('notifyRoundStatusToUsers', { status: 'Closed', roundId: lr[0].round_id, targetUids: activeUids });
-             alert("ปิดรับแทงแล้ว!");
-          } else { alert("ไม่มีรอบที่กำลังเปิดรับแทง"); }
-        } catch(e) { alert("ผิดพลาด"); }
-        fetchAdminDashboard();
       }
     }
 
-    // สเตป 1: ตรวจสอบและโชว์หน้าต่างยืนยันถ้ามี Gap
-    async function prepareFinalize() {
+    // สเตป 1: กดปุ่มปิดรับแทง (หรือหมดเวลา) จะเด้ง Modal เช็คยอดทันที
+    async function prepareCloseBetting() {
+        const btn = document.getElementById('btnCloseBetting');
+        btn.disabled = true; btn.innerText = 'ตรวจสอบยอด...';
+        isRoundOpen = false; // หยุด Timer ทันที
+
+        try {
+            const { data: lr } = await _supabase.from('rounds').select('round_id, status, resolver_type').order('round_id', { ascending: false }).limit(1);
+            if (!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่กำลังเปิดรับแทง");
+            
+            const roundId = lr[0].round_id;
+            
+            // อัปเดตสถานะบ่อเป็น Closed ทันที เพื่อไม่ให้คนแทงเพิ่มได้อีก
+            await _supabase.from('rounds').update({ status: 'Closed' }).eq('round_id', roundId);
+            
+            // ส่งแจ้งเตือนปิดรับแทงไป LINE ลูกค้า
+            let todayStr = new Date().toISOString().split('T')[0];
+            const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
+            let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
+            notifyGAS('notifyRoundStatusToUsers', { status: 'Closed', roundId: roundId, targetUids: activeUids });
+
+            // ถ้ายืนยันไปแล้ว ไม่ต้องโชว์ Modal อีก
+            if (lr[0].resolver_type !== 'none' && lr[0].resolver_type !== null) {
+                fetchAdminDashboard();
+                return;
+            }
+
+            // คำนวณส่วนต่าง
+            const { data: bets } = await _supabase.from('bets').select('amount, bet_type').eq('round_id', roundId).neq('status', 'Cancelled');
+            let totalEven = 0, totalOdd = 0;
+            if (bets && bets.length > 0) {
+                bets.forEach(b => { if (b.bet_type === 'คู่') totalEven += b.amount; if (b.bet_type === 'คี่') totalOdd += b.amount; });
+            }
+            
+            let gapAmount = Math.abs(totalEven - totalOdd); 
+            let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
+
+            pendingFinalizeData = { roundId, gapAmount, gapSide };
+
+            if (gapAmount > 0) {
+                // โชว์ Modal บังคับเลือก
+                document.getElementById('gapModalEven').innerText = `฿${totalEven.toLocaleString()}`;
+                document.getElementById('gapModalOdd').innerText = `฿${totalOdd.toLocaleString()}`;
+                document.getElementById('gapModalMissing').innerText = `ขาดฝั่ง ${gapSide} ฿${gapAmount.toLocaleString()}`;
+                document.getElementById('gapResolutionModal').classList.remove('hidden');
+            } else {
+                // ถ้ายอดบาลานซ์เป๊ะ 100% ข้ามการยืนยันไปเลย
+                await _supabase.from('rounds').update({ resolver_type: 'none' }).eq('round_id', roundId);
+                fetchAdminDashboard();
+            }
+
+        } catch (e) { alert(e.message); }
+        finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pause"></i> 2. ปิดรับแทง'; }
+    }
+
+    // สเตป 2: บันทึกการตัดสินใจว่าใครรับจบ
+    async function saveGapDecision(resolverType) {
+        try {
+            document.getElementById('btnGapBacker').disabled = true; document.getElementById('btnGapShop').disabled = true;
+            
+            let roundId = pendingFinalizeData.roundId;
+            await _supabase.from('rounds').update({ resolver_type: resolverType }).eq('round_id', roundId);
+            
+            document.getElementById('gapResolutionModal').classList.add('hidden');
+            alert("บันทึกข้อมูลการรับจบเรียบร้อยแล้ว!\nกรุณานำกุ้งไปชั่ง และกรอกน้ำหนักเพื่อตัดผลครับ");
+            
+            fetchAdminDashboard();
+        } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        finally { document.getElementById('btnGapBacker').disabled = false; document.getElementById('btnGapShop').disabled = false; }
+    }
+
+    // ยกเลิก Modal กลับไปเปิดรับแทงต่อ
+    async function cancelGapDecision() {
+        if(!confirm("ต้องการยกเลิกการปิดรอบ และเปิดให้ลูกค้าแทงต่อใช่หรือไม่?")) return;
+        try {
+            let roundId = pendingFinalizeData.roundId;
+            // เพิ่มเวลาให้อีก 1 นาทีกันหมดเวลาทันที
+            let newEndTime = new Date().getTime() + (60000 * 1);
+            await _supabase.from('rounds').update({ status: 'Open', end_time_ms: newEndTime, resolver_type: 'none' }).eq('round_id', roundId);
+            
+            let todayStr = new Date().toISOString().split('T')[0];
+            const { data: activeBets } = await _supabase.from('bets').select('uid').gte('created_at', todayStr + 'T00:00:00Z');
+            let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
+            notifyGAS('notifyRoundStatusToUsers', { status: 'Open', roundId: roundId, duration: 1, targetUids: activeUids });
+
+            document.getElementById('gapResolutionModal').classList.add('hidden');
+            pendingFinalizeData = null;
+            isRoundOpen = true;
+            fetchAdminDashboard();
+        } catch (e) { alert(e.message); }
+    }
+
+    // สเตป 3: แอดมินกรอกน้ำหนักกุ้งแล้วตัดผล
+    async function submitFinalize() {
       const btn = document.getElementById('btnFinalize');
       if (btn.disabled) return; 
       
       const w = document.getElementById('txtShrimpWeight').value;
       if (!w || w <= 0) return alert("กรุณากรอกน้ำหนักกุ้ง");
 
-      btn.disabled = true; btn.innerText = 'รอแป๊บ...';
+      btn.disabled = true; btn.innerText = 'ประมวลผล...';
       try {
-        const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
+        const { data: lr } = await _supabase.from('rounds').select('round_id, status, resolver_type').order('round_id', { ascending: false }).limit(1);
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล หรือรอบถูกตัดผลไปแล้ว");
+        if(lr[0].status === 'Open') throw new Error("กรุณากด 'ปิดรับแทง' และยืนยันยอดส่วนต่างก่อนใส่น้ำหนักกุ้งครับ!");
+        if(lr[0].resolver_type === null) throw new Error("ยังไม่ได้ยืนยันว่าใครรับความเสี่ยงส่วนต่าง!\nโปรดปิดและเปิดแท็บควบคุมบ่อใหม่เพื่อยืนยัน");
 
         const roundId = lr[0].round_id; const res = (w % 2 === 0) ? 'คู่' : 'คี่';
+        const resolverType = lr[0].resolver_type;
         
+        const { data: set } = await _supabase.from('system_settings').select('water_margin, comm_rate').eq('id', 1).single();
+        const margin = set ? set.water_margin : 0.05; const commRate = set ? set.comm_rate : 0.01;
+
         const { data: bets, error: betsError } = await _supabase.from('bets').select('*').eq('round_id', roundId).neq('status', 'Cancelled');
         if (betsError) throw new Error("ดึงข้อมูลบิลไม่ได้: " + betsError.message);
 
@@ -995,54 +1113,9 @@
             bets.forEach(b => { if (b.bet_type === 'คู่') totalEven += b.amount; if (b.bet_type === 'คี่') totalOdd += b.amount; });
         }
         
-        let gapAmount = Math.abs(totalEven - totalOdd); 
-        let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
-        
-        pendingFinalizeData = { roundId, w, res, gapAmount, gapSide, bets };
-
-        if (gapAmount > 0) {
-            // โชว์ Modal ให้เลือกคนรับจบ
-            document.getElementById('gapModalEven').innerText = `฿${totalEven.toLocaleString()}`;
-            document.getElementById('gapModalOdd').innerText = `฿${totalOdd.toLocaleString()}`;
-            document.getElementById('gapModalMissing').innerText = `ขาดฝั่ง ${gapSide} ฿${gapAmount.toLocaleString()}`;
-            document.getElementById('gapModalWeight').innerText = `${w} กรัม (ออก ${res})`;
-            
-            document.getElementById('gapResolutionModal').classList.remove('hidden');
-            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล';
-        } else {
-            // ถ้ายอดเท่ากันเป๊ะ ให้ถามยืนยันธรรมดา แล้วตัดผลเลยโดยไม่ต้องผ่าน Modal
-            if (!confirm(`ยอด 2 ฝั่งสมดุล 100%\nยืนยันการตัดผลที่น้ำหนัก ${w} กรัม (ออก ${res})?`)) {
-                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล';
-                return;
-            }
-            executeFinalize('none');
-        }
-      } catch(e) { 
-          alert("Error: " + e.message); 
-          btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล';
-      }
-    }
-
-    function closeGapModal() {
-        document.getElementById('gapResolutionModal').classList.add('hidden');
-        pendingFinalizeData = null;
-    }
-
-    // สเตป 2: ตัดผลจริงตามที่แอดมินเลือก
-    async function executeFinalize(resolverType) {
-      document.getElementById('gapResolutionModal').classList.add('hidden');
-      const btn = document.getElementById('btnFinalize');
-      btn.disabled = true; btn.innerText = 'กำลังประมวลผล...';
-      
-      try {
-        let { roundId, w, res, gapAmount, gapSide, bets } = pendingFinalizeData;
-        const { data: set } = await _supabase.from('system_settings').select('water_margin, comm_rate').eq('id', 1).single();
-        const margin = set ? set.water_margin : 0.05; const commRate = set ? set.comm_rate : 0.01;
-
+        let gapAmount = Math.abs(totalEven - totalOdd); let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
         let backerNotifies = [];
         
-        // ถ้าแอดมินเลือก "ให้ทีม Backer รับจบ" ระบบจะหัก/บวกเงินจากกระเป๋า Backer
-        // แต่ถ้าเป็น "shop" ระบบจะข้ามไปเฉยๆ เพื่อให้ผลกำไร/ขาดทุนไปตกอยู่ที่บัญชีร้าน (Net P&L)
         if (resolverType === 'backer' && gapAmount > 0 && gapSide !== 'none') {
             const { data: backers } = await _supabase.from('users').select('*').eq('role', 'Backer');
             if (backers && backers.length > 0) {
@@ -1061,7 +1134,6 @@
             }
         }
 
-        // จ่ายเงินผู้ชนะ
         let targetUids = new Set(); let winCount = 0;
         if (bets && bets.length > 0) {
           for (let bet of bets) {
@@ -1098,7 +1170,7 @@
         
         alert(`ตัดผลสำเร็จ! ผลคือ: ${res} (ชนะ ${winCount} บิล)`); document.getElementById('txtShrimpWeight').value = '';
       } catch (e) { alert("เกิดข้อผิดพลาดในการตัดผล: " + e.message); } 
-      finally { pendingFinalizeData = null; btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
+      finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
     }
 
     // ==========================================
@@ -1113,7 +1185,6 @@
         document.getElementById('targetLabel').innerText = m==='table'?"หมายเลขโต๊ะ":"รหัสลูกค้า (M000X)"; 
         document.getElementById('txtTargetId').placeholder = m==='table'?"ระบุเบอร์โต๊ะ เช่น 4":"ระบุรหัส เช่น M0001";
         
-        // ถ้าเป็นการเรียกจาก pending request ไม่ต้องเคลียร์ค่า ถ้าไม่ใช่ให้เคลียร์ค่าทิ้ง
         if(!document.getElementById('txtPendingRequestId').value) {
            document.getElementById('txtTargetId').value = ""; 
            document.getElementById('txtAmount').value = "";
@@ -1131,7 +1202,6 @@
       
       try {
         if(creditMode === 'table') {
-          // [แก้ไขบั๊กเติมโต๊ะ] ครอบ String(tId) เพื่อป้องกัน Type Mismatch ระหว่าง Supabase กับ JS
           const { data: t, error: tableError } = await _supabase.from('tables').select('credit').eq('table_no', String(tId)).single();
           if(tableError || !t) throw new Error("ไม่พบเบอร์โต๊ะนี้ในระบบ กรุณาตรวจสอบให้แน่ใจว่าได้กด 'เพิ่มโต๊ะ' เบอร์นี้ในระบบแล้ว");
           
@@ -1162,10 +1232,9 @@
           }
           await _supabase.from('transactions').insert([{ target_id: tId, type: type, amount: amount, admin_name: currentAdminName, target_type: 'user' }]);
           
-          // ถ้ามี Pending Request ID ค้างอยู่ (มาจากการกดปุ่ม "จัดการรายการ" ในแท็บรอดำเนินการ)
           if(pendingReqId) {
              await _supabase.from('topup_requests').update({ status: 'Approved', admin_name: currentAdminName }).eq('id', pendingReqId);
-             document.getElementById('txtPendingRequestId').value = ""; // เคลียร์ทิ้ง
+             document.getElementById('txtPendingRequestId').value = ""; 
           }
           
           alert(`สำเร็จ! อัปเดตยอดและส่งแจ้งเตือนให้ลูกค้าเรียบร้อยแล้ว`);
