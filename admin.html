@@ -76,19 +76,16 @@
     .settings-content.open { display: block; }
     .toggle-btn { background: #334155; width: 100%; border: none; padding: 10px; color: white; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 
-    /* สไตล์สำหรับการพิมพ์ (Print) */
     @media print {
         body { background: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
         .no-print { display: none !important; }
         .print-only { display: block !important; }
         .card, .container { box-shadow: none !important; border: none !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        
         .layout-a4 { font-family: 'Sarabun', 'Kanit', sans-serif; }
         .layout-a4 .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
         .layout-a4 .report-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px; }
         .layout-a4 .report-table th, .layout-a4 .report-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .layout-a4 .report-table th { background-color: #f2f2f2 !important; color: black !important; font-weight: bold; }
-        
         .layout-slip { width: 72mm; margin: 0 auto; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: black; }
         .layout-slip .report-header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 5px; }
         .layout-slip .slip-section { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
@@ -101,7 +98,46 @@
 </head>
 <body>
 
-  <!-- Modal QR โต๊ะ -->
+  <!-- Modal เลือกว่าใครจะรับความเสี่ยงตอนยอดไม่บาลานซ์ (Gap Resolution) -->
+  <div id="gapResolutionModal" class="hidden no-print" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 1px solid var(--red-main); border-radius: 16px; padding: 25px; width: 100%; max-width: 400px; text-align: center; position: relative; box-shadow: 0 0 20px rgba(239,68,68,0.3);">
+      <h2 style="margin-top: 0; color: var(--red-main);"><i class="fa-solid fa-triangle-exclamation"></i> ยอดแทงไม่สมดุล!</h2>
+      
+      <div style="background: #0f111a; border-radius: 12px; padding: 15px; text-align: left; margin-bottom: 20px; border: 1px solid var(--card-border);">
+         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span style="color: var(--blue-main);">ยอดฝั่ง คู่:</span>
+            <span id="gapModalEven" style="font-weight: bold; color: white;">฿0</span>
+         </div>
+         <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">
+            <span style="color: var(--red-main);">ยอดฝั่ง คี่:</span>
+            <span id="gapModalOdd" style="font-weight: bold; color: white;">฿0</span>
+         </div>
+         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span style="color: var(--yellow-main);">ขาดส่วนต่าง:</span>
+            <span id="gapModalMissing" style="font-weight: bold; color: var(--yellow-main); font-size: 1.1rem;">-</span>
+         </div>
+         <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">น้ำหนักชั่งได้:</span>
+            <span id="gapModalWeight" style="font-weight: bold; color: white;">-</span>
+         </div>
+      </div>
+
+      <h4 style="margin-top: 0; margin-bottom: 15px; color: white;">กรุณาเลือกว่าจะให้ใครเป็นคนรับยอดส่วนต่างนี้?</h4>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button onclick="executeFinalize('backer')" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1.1rem; font-weight: bold; cursor: pointer;">
+           <i class="fa-solid fa-users"></i> ให้ทีม Backer รับจบ (ตัดทุน)
+        </button>
+        <button onclick="executeFinalize('shop')" style="background: var(--blue-main); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; font-weight: bold; cursor: pointer;">
+           <i class="fa-solid fa-store"></i> ร้านรับความเสี่ยงเอง
+        </button>
+        <button onclick="closeGapModal()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); padding: 10px; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; margin-top: 5px;">
+           ยกเลิก / กลับไปแก้ไข
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="qrModal" class="hidden no-print" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; width: 100%; max-width: 350px; text-align: center; position: relative;">
       <h3 style="margin-top: 0; color: var(--blue-main); border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">QR Code โต๊ะ <span id="qrTableNoDisplay"></span></h3>
@@ -110,18 +146,13 @@
     </div>
   </div>
 
-  <!-- Modal จัดการสัดส่วนทีมรับจบ (Backer Team) -->
   <div id="backerTeamModal" class="hidden no-print" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 1px solid #8b5cf6; border-radius: 16px; padding: 20px; width: 100%; max-width: 400px; position: relative; max-height: 90vh; overflow-y: auto;">
       <h3 style="margin-top: 0; color: #8b5cf6; border-bottom: 1px dashed var(--card-border); padding-bottom: 10px;">
          <i class="fa-solid fa-handshake-angle"></i> ตั้งค่าทีมคนรับจบ
       </h3>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">ระบบจะคำนวณ % ของคนที่ 1 ให้อัตโนมัติ (ยอดรวมต้องได้ 100%)</p>
-      
-      <div id="backerTeamListContainer" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
-          <!-- ข้อมูลจะถูก Render เข้ามาที่นี่ด้วย JavaScript -->
-      </div>
-      
+      <div id="backerTeamListContainer" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;"></div>
       <div style="display: flex; gap: 10px;">
         <button onclick="closeBackerTeamModal()" class="btn btn-outline" style="flex: 1;">ยกเลิก</button>
         <button onclick="saveBackerTeamShares()" class="btn btn-purple" style="flex: 1;">บันทึกการตั้งค่า</button>
@@ -135,7 +166,6 @@
       <div class="op-badge" id="opProfile">ตรวจสอบสิทธิ์...</div>
     </div>
 
-    <!-- เมนูเปลี่ยนหน้า (Tabs) -->
     <div class="switch-mode no-print" id="adminTabs" style="display: none; margin-bottom: 20px;">
         <div class="switch-btn active" id="tabControl" onclick="switchAdminTab('control')">ควบคุมบ่อ</div>
         <div class="switch-btn" id="tabPending" onclick="switchAdminTab('pending')" style="position: relative;">
@@ -151,9 +181,7 @@
       <p style="color: var(--text-muted); margin-top: 10px;">หน้านี้สงวนไว้สำหรับพนักงานเท่านั้น</p>
     </div>
 
-    <!-- ============================================== -->
-    <!-- View 1: ควบคุมบ่อ (Admin Dashboard) -->
-    <!-- ============================================== -->
+    <!-- View 1: ควบคุมบ่อ -->
     <div id="adminContentView" class="hidden no-print">
       <div class="card" id="cardRoundControl">
         <div class="card-title" style="color: var(--yellow-main);"><i class="fa-solid fa-stopwatch"></i> ควบคุมรอบชั่งกุ้ง</div>
@@ -176,7 +204,7 @@
           <label>น้ำหนักกุ้ง (กรัม)</label>
           <div style="display: flex; gap: 10px;">
             <input type="number" id="txtShrimpWeight" class="form-control" placeholder="เช่น 54" style="flex: 2;">
-            <button class="btn btn-orange" id="btnFinalize" style="flex: 1;" onclick="submitFinalize()"><i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล</button>
+            <button class="btn btn-orange" id="btnFinalize" style="flex: 1;" onclick="prepareFinalize()"><i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล</button>
           </div>
         </div>
       </div>
@@ -189,12 +217,10 @@
       <div class="card" id="cardCreditManage">
         <div class="card-title"><i class="fa-solid fa-coins"></i> ระบบ เติม / ถอน เครดิต (ด่วน)</div>
         <div class="switch-mode">
-          <!-- สลับโหมด Private ไว้เป็นค่าเริ่มต้น -->
-          <div class="switch-btn active" id="creditModePrivate" onclick="setCreditMode('private')">เล่นส่วนตัว (รหัส)</div>
+          <div class="switch-btn active" id="creditModePrivate" onclick="setCreditMode('private')">ลูกค้าส่วนตัว (รหัส)</div>
           <div class="switch-btn" id="creditModeTable" onclick="setCreditMode('table')">ลูกค้าลงโต๊ะ</div>
         </div>
         
-        <!-- ซ่อน input เก็บ ID ของรายการคิวรอดำเนินการ -->
         <input type="hidden" id="txtPendingRequestId" value="">
 
         <div class="form-group">
@@ -220,7 +246,6 @@
         <div id="tableListContainer" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
       </div>
 
-      <!-- ระบบจัดการสิทธิ์ -->
       <div class="card" id="cardUserManage">
         <div class="card-title" style="color: var(--blue-main); display: flex; justify-content: space-between; align-items: center;">
             <span><i class="fa-solid fa-users-gear"></i> จัดการสิทธิ์ผู้ใช้งาน</span>
@@ -286,9 +311,7 @@
       </div>
     </div>
 
-    <!-- ============================================== -->
     <!-- View 2: คิวรอดำเนินการ -->
-    <!-- ============================================== -->
     <div id="pendingContentView" class="hidden no-print">
       <div class="card">
         <div class="card-title" style="color: var(--yellow-main);"><i class="fa-solid fa-bell"></i> คิวฝาก-ถอน รอดำเนินการ</div>
@@ -298,9 +321,7 @@
       </div>
     </div>
 
-    <!-- ============================================== -->
     <!-- View 3: รายงานผล และสั่งพิมพ์ -->
-    <!-- ============================================== -->
     <div id="reportContentView" class="hidden no-print">
       <div class="card">
         <div class="card-title" style="color: var(--green-main);"><i class="fa-solid fa-file-invoice"></i> สรุปยอดและพิมพ์รายงาน</div>
@@ -349,9 +370,6 @@
     </div>
   </div>
   
-  <!-- ============================================== -->
-  <!-- ส่วนของหน้าตาที่ใช้ Print A4 -->
-  <!-- ============================================== -->
   <div id="printAreaA4" class="print-only layout-a4" style="display: none;">
       <div class="report-header">
           <h2 style="margin-bottom: 5px;">รายงานสรุปยอดประจำวัน - บ่อตกกุ้ง</h2>
@@ -380,23 +398,8 @@
           <tr><td>ผลออก คู่ (Even)</td><td class="text-right" id="p_roundEvenA4">0</td></tr>
           <tr><td>ผลออก คี่ (Odd)</td><td class="text-right" id="p_roundOddA4">0</td></tr>
       </table>
-      <div style="margin-top: 50px; display: flex; justify-content: space-around;">
-          <div style="text-align: center;">
-              <p>.......................................................</p>
-              <p>( <span id="signAdminNameA4"></span> )</p>
-              <p>ผู้จัดการ/แอดมินผู้สรุปยอด</p>
-          </div>
-          <div style="text-align: center;">
-              <p>.......................................................</p>
-              <p>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</p>
-              <p>ผู้ตรวจสอบ/ฝ่ายบัญชี</p>
-          </div>
-      </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- ส่วนของหน้าตาที่ใช้ Print Slip 80mm -->
-  <!-- ============================================== -->
   <div id="printAreaSlip" class="print-only layout-slip" style="display: none;">
       <div class="report-header">
           <h2>รายงานสรุปยอด (P&L)</h2>
@@ -436,7 +439,6 @@
 
   <script>
     const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-    // 1. ตั้งค่าเริ่มต้นโหมดเติมเครดิตเป็น private 
     let currentOpId = "", currentAdminName = "", creditMode = "private", currentUserRole = "Customer", selectedUserIdForManage = ""; 
     let targetEndTimeMs = null, isRoundOpen = false;
 
@@ -468,17 +470,14 @@
              if (dataParts.length === 3) {
                  let t_mid = dataParts[0]; let t_amt = dataParts[1]; let t_type_code = dataParts[2];
                  
-                 // สลับมาที่แท็บควบคุมบ่อ แล้วกรอกข้อมูลรอล่วงหน้าตามที่คุณต้องการ
                  switchAdminTab('control');
-                 document.getElementById('creditModePrivate').click(); // เปิดโหมดลูกค้าส่วนตัว
+                 document.getElementById('creditModePrivate').click(); 
                  document.getElementById('txtTargetId').value = t_mid;
                  document.getElementById('txtAmount').value = t_amt;
-                 
-                 // เลื่อนหน้าจอลงมาที่กล่อง เติม/ถอน อัตโนมัติ เพื่อให้พนักงานเห็นทันที
                  document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
                  
                  alert(`มีคำขอรายการใหม่จาก LINE!\n\nรหัส: ${t_mid}\nยอด: ${t_amt} ฿\n\nระบบกรอกข้อมูลในช่อง เติม/ถอน ให้แล้ว โปรดตรวจสอบและกดยืนยันรายการครับ`);
-                 history.replaceState(null, null, ' '); // เคลียร์ hash
+                 history.replaceState(null, null, ' '); 
              }
           }
         } else { liff.login({ redirectUri: window.location.href }); }
@@ -548,7 +547,7 @@
     }
 
     // ==========================================
-    // จัดการทีมคนรับจบ (Backer Auto-Balancer Logic)
+    // จัดการทีมคนรับจบ
     // ==========================================
     let currentBackers = [];
 
@@ -730,7 +729,6 @@
              let card = document.createElement('div');
              card.style.cssText = "background: #0f111a; border: 1px solid var(--card-border); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 8px;";
              
-             // เปลี่ยนปุ่ม "อนุมัติ" เป็น "จัดการรายการ" เพื่อให้เด้งไปกรอกข้อมูลในหน้าหลัก
              card.innerHTML = `
                 <div style="display: flex; justify-content: space-between;"><div style="color: white; font-weight: bold;">${r.display_name} <span style="color: var(--text-muted); font-size: 0.8rem;">(${r.member_id})</span></div><div style="color: ${typeColor}; font-weight: bold; font-size: 1.1rem;">${r.type} ฿${r.amount}</div></div>
                 <div style="font-size: 0.85rem; color: var(--text-muted);"><div>ช่องทาง: ${r.method}</div><div>เวลา: ${new Date(r.created_at).toLocaleTimeString('th-TH')}</div></div>
@@ -745,32 +743,20 @@
        } catch (e) { console.error("Exception in loadPendingRequests:", e); }
     }
 
-    // ฟังก์ชันใหม่ เมื่อกด "จัดการรายการ" ในแท็บรอดำเนินการ จะเด้งไปที่แท็บ "ควบคุมบ่อ" และกรอกข้อมูลให้
     function handlePendingRequest(reqId, targetMemberId, amount, type) {
-        document.getElementById('txtPendingRequestId').value = reqId; // เก็บ ID ไว้เผื่ออ้างอิงตอนกดอนุมัติจริง
+        document.getElementById('txtPendingRequestId').value = reqId; 
         
-        switchAdminTab('control'); // เด้งไปหน้าหลัก
-        document.getElementById('creditModePrivate').click(); // เปิดโหมดลูกค้าส่วนตัว
+        switchAdminTab('control'); 
+        document.getElementById('creditModePrivate').click(); 
         
         document.getElementById('txtTargetId').value = targetMemberId;
         document.getElementById('txtAmount').value = amount;
         
         document.getElementById('cardCreditManage').scrollIntoView({ behavior: 'smooth' });
         
-        // ถ้ารายการนั้นคือการโอนค่าคอม จะไม่มีปุ่มให้แอดมินกดในหน้านี้ (ต้องใช้โหมดอนุมัติเก่า) เลยเขียนดักไว้
         if (type === 'ถอนค่าคอม') {
             alert(`รายการนี้เป็น "ถอนค่าคอมมิชชั่น" \nแอดมินต้องทำการโอนเงินสดให้ลูกค้าด้วยตัวเอง แล้วค่อยกลับมากดลบ/อนุมัติรายการในคิวครับ`);
         }
-    }
-
-    // ฟังก์ชันอนุมัติคิวเดิม (เผื่อเอาไว้ใช้กับ ถอนค่าคอม หรือ อนุมัติเบื้องหลัง)
-    async function approvePendingRequest(id, targetId, uid, type, amount) {
-        if(!confirm(`ยืนยัน อนุมัติ ${type} จำนวน ฿${amount} ให้รหัส ${targetId} ใช่หรือไม่?`)) return;
-        try {
-            if (type === 'ถอนค่าคอม') { notifyGAS('approveAffiliateWithdraw', { uid: uid, amount: amount }); }
-            await _supabase.from('topup_requests').update({ status: 'Approved', admin_name: currentAdminName }).eq('id', id);
-            alert("✅ อนุมัติรายการสำเร็จ!"); loadPendingRequests(); loadTableList();
-        } catch (e) { alert("ข้อผิดพลาด: " + e.message); }
     }
 
     async function rejectPendingRequest(id, uid, type, amount) {
@@ -903,8 +889,10 @@
     }
 
     // ==========================================
-    // ฟังก์ชันควบคุมการจัดการตัดผล (Auto-Pool)
+    // ฟังก์ชันควบคุมการจัดการตัดผล (Auto-Pool & Gap Resolution)
     // ==========================================
+    let pendingFinalizeData = null; // ตัวแปรเก็บค่าชั่วคราวรอแอดมินยืนยัน
+
     function startAdminTimer() {
       setInterval(() => {
         let el = document.getElementById('adminRoundSubInfo');
@@ -983,22 +971,22 @@
         fetchAdminDashboard();
       }
     }
-    
-    async function submitFinalize() {
+
+    // สเตป 1: ตรวจสอบและโชว์หน้าต่างยืนยันถ้ามี Gap
+    async function prepareFinalize() {
       const btn = document.getElementById('btnFinalize');
       if (btn.disabled) return; 
+      
       const w = document.getElementById('txtShrimpWeight').value;
       if (!w || w <= 0) return alert("กรุณากรอกน้ำหนักกุ้ง");
-      if (!confirm(`ยืนยันการตัดผลที่น้ำหนัก ${w} กรัม?`)) return;
+
       btn.disabled = true; btn.innerText = 'รอแป๊บ...';
       try {
         const { data: lr } = await _supabase.from('rounds').select('round_id, status').order('round_id', { ascending: false }).limit(1);
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล หรือรอบถูกตัดผลไปแล้ว");
 
         const roundId = lr[0].round_id; const res = (w % 2 === 0) ? 'คู่' : 'คี่';
-        const { data: set } = await _supabase.from('system_settings').select('water_margin, comm_rate').eq('id', 1).single();
-        const margin = set ? set.water_margin : 0.05; const commRate = set ? set.comm_rate : 0.01;
-
+        
         const { data: bets, error: betsError } = await _supabase.from('bets').select('*').eq('round_id', roundId).neq('status', 'Cancelled');
         if (betsError) throw new Error("ดึงข้อมูลบิลไม่ได้: " + betsError.message);
 
@@ -1007,10 +995,55 @@
             bets.forEach(b => { if (b.bet_type === 'คู่') totalEven += b.amount; if (b.bet_type === 'คี่') totalOdd += b.amount; });
         }
         
-        let gapAmount = Math.abs(totalEven - totalOdd); let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
+        let gapAmount = Math.abs(totalEven - totalOdd); 
+        let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
+        
+        pendingFinalizeData = { roundId, w, res, gapAmount, gapSide, bets };
+
+        if (gapAmount > 0) {
+            // โชว์ Modal ให้เลือกคนรับจบ
+            document.getElementById('gapModalEven').innerText = `฿${totalEven.toLocaleString()}`;
+            document.getElementById('gapModalOdd').innerText = `฿${totalOdd.toLocaleString()}`;
+            document.getElementById('gapModalMissing').innerText = `ขาดฝั่ง ${gapSide} ฿${gapAmount.toLocaleString()}`;
+            document.getElementById('gapModalWeight').innerText = `${w} กรัม (ออก ${res})`;
+            
+            document.getElementById('gapResolutionModal').classList.remove('hidden');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล';
+        } else {
+            // ถ้ายอดเท่ากันเป๊ะ ให้ถามยืนยันธรรมดา แล้วตัดผลเลยโดยไม่ต้องผ่าน Modal
+            if (!confirm(`ยอด 2 ฝั่งสมดุล 100%\nยืนยันการตัดผลที่น้ำหนัก ${w} กรัม (ออก ${res})?`)) {
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล';
+                return;
+            }
+            executeFinalize('none');
+        }
+      } catch(e) { 
+          alert("Error: " + e.message); 
+          btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล';
+      }
+    }
+
+    function closeGapModal() {
+        document.getElementById('gapResolutionModal').classList.add('hidden');
+        pendingFinalizeData = null;
+    }
+
+    // สเตป 2: ตัดผลจริงตามที่แอดมินเลือก
+    async function executeFinalize(resolverType) {
+      document.getElementById('gapResolutionModal').classList.add('hidden');
+      const btn = document.getElementById('btnFinalize');
+      btn.disabled = true; btn.innerText = 'กำลังประมวลผล...';
+      
+      try {
+        let { roundId, w, res, gapAmount, gapSide, bets } = pendingFinalizeData;
+        const { data: set } = await _supabase.from('system_settings').select('water_margin, comm_rate').eq('id', 1).single();
+        const margin = set ? set.water_margin : 0.05; const commRate = set ? set.comm_rate : 0.01;
+
         let backerNotifies = [];
         
-        if (gapAmount > 0 && gapSide !== 'none') {
+        // ถ้าแอดมินเลือก "ให้ทีม Backer รับจบ" ระบบจะหัก/บวกเงินจากกระเป๋า Backer
+        // แต่ถ้าเป็น "shop" ระบบจะข้ามไปเฉยๆ เพื่อให้ผลกำไร/ขาดทุนไปตกอยู่ที่บัญชีร้าน (Net P&L)
+        if (resolverType === 'backer' && gapAmount > 0 && gapSide !== 'none') {
             const { data: backers } = await _supabase.from('users').select('*').eq('role', 'Backer');
             if (backers && backers.length > 0) {
                 for (let backer of backers) {
@@ -1028,6 +1061,7 @@
             }
         }
 
+        // จ่ายเงินผู้ชนะ
         let targetUids = new Set(); let winCount = 0;
         if (bets && bets.length > 0) {
           for (let bet of bets) {
@@ -1064,7 +1098,7 @@
         
         alert(`ตัดผลสำเร็จ! ผลคือ: ${res} (ชนะ ${winCount} บิล)`); document.getElementById('txtShrimpWeight').value = '';
       } catch (e) { alert("เกิดข้อผิดพลาดในการตัดผล: " + e.message); } 
-      finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
+      finally { pendingFinalizeData = null; btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
     }
 
     // ==========================================
