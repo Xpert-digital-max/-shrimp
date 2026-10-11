@@ -28,7 +28,6 @@
     .value { font-size: 1.1rem; font-weight: 600; }
     .val-green { color: var(--green-text); font-size: 1.2rem;}
     
-    /* สไตล์ปุ่มเมนูพิเศษ */
     .special-menu-container { display: flex; gap: 10px; margin-bottom: 15px; }
     .btn-special { flex: 1; border: none; padding: 12px; border-radius: 10px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; color: white; display: none; text-align: center; font-size: 0.95rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: transform 0.2s;}
     .btn-special:active { transform: scale(0.98); }
@@ -147,7 +146,6 @@
         </select>
       </div>
 
-      <!-- ช่องอัปโหลดสลิป -->
       <div style="margin-bottom: 20px; display: block;" id="slipUploadSection">
         <label style="display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">แนบสลิปโอนเงิน (บังคับ)</label>
         <input type="file" id="fileSlip" accept="image/*" style="width: 100%; box-sizing: border-box; background: #0f111a; border: 1px solid var(--card-border); color: white; padding: 10px; border-radius: 8px; font-family: 'Kanit'; font-size: 0.9rem; outline: none;">
@@ -186,7 +184,7 @@
       </div>
     </div>
 
-    <!-- ปุ่มเมนูพิเศษ (จะแสดงตามสิทธิ์ Role) -->
+    <!-- ปุ่มเมนูพิเศษ -->
     <div class="special-menu-container">
         <button id="btnBackerMenu" class="btn-special btn-backer" onclick="window.location.href='backer.html'">
             <i class="fa-solid fa-handshake-angle"></i> แดชบอร์ดรับจบ
@@ -525,7 +523,6 @@
       const btnOdd = document.getElementById('btnOdd');
       const btnSubmit = document.getElementById('btnSubmitBet');
       
-      // ถ้าเป็น Promoter บล็อกถาวร
       if (currentUserRole === 'Promoter') {
           btnEven.classList.add('disabled'); btnOdd.classList.add('disabled'); 
           btnSubmit.classList.add('disabled'); btnSubmit.innerText = "ผู้แนะนำไม่สามารถแทงได้";
@@ -725,7 +722,7 @@
       });
     }
 
-    // ฟังก์ชันขอเติม/ถอนเครดิตแบบบันทึกลงคิวรอดำเนินการ
+    // ฟังก์ชันขอเติม/ถอนเครดิตแบบบันทึกลงคิวรอดำเนินการ + ดักจับ Error
     async function submitTopupRequest() {
       const type = document.getElementById('selTransactionType').value;
       const amount = document.getElementById('txtTopupAmount').value;
@@ -770,7 +767,6 @@
            }]);
 
            if (dbError) {
-               // ถ้าบันทึกไม่เข้า จะเด้งบอกสาเหตุที่หน้าจอทันที
                alert("แจ้งเตือน LINE สำเร็จ แต่บันทึกลงฐานข้อมูลไม่เข้า!\nสาเหตุ: " + dbError.message);
                btnSubmit.disabled = false; 
                btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
@@ -778,7 +774,9 @@
                alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
                closeTopupModal(); 
            }
-        }
+        } else { alert("ข้อผิดพลาด: " + res.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
+      } catch (error) { alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
+    }
 
     initializeApp();
   </script>
