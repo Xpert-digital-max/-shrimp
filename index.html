@@ -748,13 +748,18 @@
         type: type, amount: parseFloat(amount), method: method, feeOption: (type === 'ถอนเงิน') ? feeOption : '-', slipBase64: slipBase64, slipMimeType: slipMime
       };
 
+      console.log("Payload to GAS:", payload); // แสดงข้อมูลที่จะส่งไป GAS
+
       try {
         const response = await fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
         const res = await response.json();
         
+        console.log("Response from GAS:", res); // แสดงผลลัพธ์จาก GAS
+
         if(res.status === 'success') { 
+           console.log("GAS Success, Attempting Supabase Insert...");
            // บันทึกลงตาราง topup_requests ใน Supabase พร้อมดักจับ Error
-           const { error: dbError } = await _supabase.from('topup_requests').insert([{
+           const { data: insertData, error: dbError } = await _supabase.from('topup_requests').insert([{
               uid: currentLineUserId,
               member_id: memberId,
               display_name: currentDisplayName,
@@ -764,18 +769,30 @@
               fee_option: (type === 'ถอนเงิน') ? feeOption : '-',
               slip_url: res.fileUrl || '',
               status: 'Pending'
-           }]);
+           }]).select(); // เพิ่ม .select() เพื่อให้ส่งคืนข้อมูลที่ insert กลับมา
 
            if (dbError) {
+               console.error("Supabase Insert Error:", dbError);
                alert("แจ้งเตือน LINE สำเร็จ แต่บันทึกลงฐานข้อมูลไม่เข้า!\nสาเหตุ: " + dbError.message);
                btnSubmit.disabled = false; 
                btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
            } else {
+               console.log("Supabase Insert Success:", insertData);
                alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
                closeTopupModal(); 
            }
-        } else { alert("ข้อผิดพลาด: " + res.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
-      } catch (error) { alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
+        } else { 
+            console.error("GAS Error:", res.message);
+            alert("ข้อผิดพลาด: " + res.message); 
+            btnSubmit.disabled = false; 
+            btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; 
+        }
+      } catch (error) { 
+          console.error("Fetch Error:", error);
+          alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); 
+          btnSubmit.disabled = false; 
+          btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; 
+      }
     }
 
     initializeApp();
