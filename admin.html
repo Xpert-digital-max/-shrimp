@@ -98,7 +98,7 @@
 </head>
 <body>
 
-  <!-- Modal เลือกว่าใครจะรับความเสี่ยงตอนยอดไม่บาลานซ์ (Gap Resolution) -->
+  <!-- Modal เลือกว่าใครจะรับความเสี่ยงตอนยอดไม่บาลานซ์ -->
   <div id="gapResolutionModal" class="hidden no-print" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 1px solid var(--red-main); border-radius: 16px; padding: 25px; width: 100%; max-width: 400px; text-align: center; position: relative; box-shadow: 0 0 20px rgba(239,68,68,0.3);">
       <h2 style="margin-top: 0; color: var(--red-main);"><i class="fa-solid fa-triangle-exclamation"></i> ยอดแทงไม่สมดุล!</h2>
@@ -126,7 +126,6 @@
         <button id="btnGapShop" onclick="saveGapDecision('shop')" style="background: var(--blue-main); color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit'; font-size: 1rem; font-weight: bold; cursor: pointer;">
            <i class="fa-solid fa-store"></i> ร้านรับความเสี่ยงเอง
         </button>
-        <!-- ปุ่มยกเลิกนี้จะทำการเปิดรับแทงกลับมาเหมือนเดิม -->
         <button onclick="cancelGapDecision()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); padding: 10px; border-radius: 8px; font-family: 'Kanit'; cursor: pointer; margin-top: 5px;">
            ยกเลิก / กลับไปเปิดรับแทงต่อ
         </button>
@@ -197,7 +196,6 @@
           <button class="btn btn-yellow" id="btnCloseBetting" onclick="prepareCloseBetting()"><i class="fa-solid fa-pause"></i> 2. ปิดรับแทง</button>
         </div>
         
-        <!-- ซ่อนข้อความแจ้งเตือนว่าให้ใครรับจบ ไว้ใต้ปุ่มปิดรับแทง -->
         <div id="resolverStatusMsg" style="display: none; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; padding: 10px; border-radius: 8px; text-align: center; color: #8b5cf6; font-size: 0.9rem; margin-bottom: 15px;">
            <i class="fa-solid fa-check-circle"></i> ยืนยันการรับจบโดย: <span id="txtResolverName" style="font-weight: bold;">-</span>
         </div>
@@ -443,9 +441,7 @@
     const _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
     let currentOpId = "", currentAdminName = "", creditMode = "private", currentUserRole = "Customer", selectedUserIdForManage = ""; 
     let targetEndTimeMs = null, isRoundOpen = false;
-
-    // ตัวแปรสำหรับเก็บข้อมูลรอบที่กำลังจะปิด
-    let pendingRoundIdToClose = "";
+    let pendingFinalizeData = null; // เก็บข้อมูลรอบที่กำลังรออนุมัติส่วนต่าง
 
     async function notifyGAS(action, payloadData) {
       try { fetch(APP_CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify({ action: action, ...payloadData }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }); } catch (e) {}
@@ -562,9 +558,7 @@
         document.getElementById('backerTeamModal').classList.remove('hidden');
     }
 
-    function closeBackerTeamModal() {
-        document.getElementById('backerTeamModal').classList.add('hidden');
-    }
+    function closeBackerTeamModal() { document.getElementById('backerTeamModal').classList.add('hidden'); }
 
     function renderBackerTeamUI() {
         const container = document.getElementById('backerTeamListContainer');
@@ -638,8 +632,7 @@
         let s1Elem = document.getElementById('shareB1');
         if (s1Elem) {
             s1Elem.innerText = s1;
-            if (s1 < 0) s1Elem.style.color = "var(--red-main)";
-            else s1Elem.style.color = "var(--green-main)";
+            if (s1 < 0) s1Elem.style.color = "var(--red-main)"; else s1Elem.style.color = "var(--green-main)";
         }
     }
 
@@ -701,7 +694,9 @@
         let nr = document.getElementById('selChangeRole').value; 
         let updateData = { role: nr };
         if(nr === 'Backer') { updateData.backer_share = 0; updateData.backer_water_fee = 10; }
-        await _supabase.from('users').update(updateData).eq('uid', selectedUserIdForManage); 
+        
+        const { error } = await _supabase.from('users').update(updateData).eq('uid', selectedUserIdForManage); 
+        if(error) return alert("อัปเดตสิทธิ์ล้มเหลว: " + error.message);
         
         if(nr === 'Backer') alert(`อัปเดตเป็นพาร์ทเนอร์รับจบเรียบร้อย!\n\nกรุณากดปุ่ม "จัดทีมคนรับจบ" ด้านบนเพื่อแบ่งสัดส่วน % ให้ถูกต้องครับ`); 
         else if (nr === 'Promoter') alert(`อัปเดตสิทธิ์เป็น "ผู้แนะนำ (Promoter)" เรียบร้อยแล้ว\nบัญชีนี้จะไม่สามารถเข้าเล่นเกมได้ แต่แนะนำเพื่อนได้ตามปกติครับ`);
@@ -889,7 +884,7 @@
     }
 
     // ==========================================
-    // ฟังก์ชันควบคุมการจัดการตัดผล (ระบบยืนยันก่อนชั่งกุ้ง)
+    // ฟังก์ชันควบคุมการจัดการตัดผล (ระบบตรวจสอบส่วนต่างก่อนตัดผล)
     // ==========================================
     function startAdminTimer() {
       setInterval(() => {
@@ -898,10 +893,9 @@
         let dist = targetEndTimeMs - new Date().getTime();
         
         if (dist <= 0 && isRoundOpen) { 
-            // เมื่อหมดเวลา ให้ปิดรับแทงอัตโนมัติ และแสดง Modal ตรวจสอบส่วนต่าง
-            el.innerText = "หมดเวลาแทง • กำลังปิดรอบ..."; 
+            el.innerText = "หมดเวลาแทง • กำลังตรวจสอบยอด..."; 
             el.style.color = "var(--red-main)"; 
-            prepareCloseBetting(); // เรียกฟังก์ชันเช็ค Gap
+            prepareCloseBetting(); 
         } 
         else if (dist > 0) { 
             let m = Math.floor((dist % 3600000) / 60000); let s = Math.floor((dist % 60000) / 1000); 
@@ -992,11 +986,11 @@
       }
     }
 
-    // สเตป 1: กดปุ่มปิดรับแทง (หรือหมดเวลา) จะเด้ง Modal เช็คยอดทันที
+    // ฟังก์ชันนี้จะถูกเรียกเมื่อกด "ปิดรับแทง" หรือ "หมดเวลา"
     async function prepareCloseBetting() {
         const btn = document.getElementById('btnCloseBetting');
         btn.disabled = true; btn.innerText = 'ตรวจสอบยอด...';
-        isRoundOpen = false; // หยุด Timer ทันที
+        isRoundOpen = false;
 
         try {
             const { data: lr } = await _supabase.from('rounds').select('round_id, status, resolver_type').order('round_id', { ascending: false }).limit(1);
@@ -1013,13 +1007,12 @@
             let activeUids = []; if (activeBets) activeUids = Array.from(new Set(activeBets.map(b => b.uid)));
             notifyGAS('notifyRoundStatusToUsers', { status: 'Closed', roundId: roundId, targetUids: activeUids });
 
-            // ถ้ายืนยันไปแล้ว ไม่ต้องโชว์ Modal อีก
             if (lr[0].resolver_type !== 'none' && lr[0].resolver_type !== null) {
                 fetchAdminDashboard();
                 return;
             }
 
-            // คำนวณส่วนต่าง
+            // คำนวณส่วนต่างทันทีที่ปิดรอบ (ยังไม่ได้ชั่งกุ้ง)
             const { data: bets } = await _supabase.from('bets').select('amount, bet_type').eq('round_id', roundId).neq('status', 'Cancelled');
             let totalEven = 0, totalOdd = 0;
             if (bets && bets.length > 0) {
@@ -1032,13 +1025,13 @@
             pendingFinalizeData = { roundId, gapAmount, gapSide };
 
             if (gapAmount > 0) {
-                // โชว์ Modal บังคับเลือก
+                // โชว์ Modal บังคับเลือกคนรับจบความเสี่ยง
                 document.getElementById('gapModalEven').innerText = `฿${totalEven.toLocaleString()}`;
                 document.getElementById('gapModalOdd').innerText = `฿${totalOdd.toLocaleString()}`;
                 document.getElementById('gapModalMissing').innerText = `ขาดฝั่ง ${gapSide} ฿${gapAmount.toLocaleString()}`;
                 document.getElementById('gapResolutionModal').classList.remove('hidden');
             } else {
-                // ถ้ายอดบาลานซ์เป๊ะ 100% ข้ามการยืนยันไปเลย
+                // ถ้ายอดบาลานซ์เป๊ะ ข้ามการยืนยันไปเลย
                 await _supabase.from('rounds').update({ resolver_type: 'none' }).eq('round_id', roundId);
                 fetchAdminDashboard();
             }
@@ -1047,7 +1040,6 @@
         finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pause"></i> 2. ปิดรับแทง'; }
     }
 
-    // สเตป 2: บันทึกการตัดสินใจว่าใครรับจบ
     async function saveGapDecision(resolverType) {
         try {
             document.getElementById('btnGapBacker').disabled = true; document.getElementById('btnGapShop').disabled = true;
@@ -1063,7 +1055,6 @@
         finally { document.getElementById('btnGapBacker').disabled = false; document.getElementById('btnGapShop').disabled = false; }
     }
 
-    // ยกเลิก Modal กลับไปเปิดรับแทงต่อ
     async function cancelGapDecision() {
         if(!confirm("ต้องการยกเลิกการปิดรอบ และเปิดให้ลูกค้าแทงต่อใช่หรือไม่?")) return;
         try {
@@ -1084,7 +1075,6 @@
         } catch (e) { alert(e.message); }
     }
 
-    // สเตป 3: แอดมินกรอกน้ำหนักกุ้งแล้วตัดผล
     async function submitFinalize() {
       const btn = document.getElementById('btnFinalize');
       if (btn.disabled) return; 
@@ -1096,8 +1086,10 @@
       try {
         const { data: lr } = await _supabase.from('rounds').select('round_id, status, resolver_type').order('round_id', { ascending: false }).limit(1);
         if(!lr || lr.length === 0 || lr[0].status === 'Ended') throw new Error("ไม่พบรอบที่ต้องตัดผล หรือรอบถูกตัดผลไปแล้ว");
-        if(lr[0].status === 'Open') throw new Error("กรุณากด 'ปิดรับแทง' และยืนยันยอดส่วนต่างก่อนใส่น้ำหนักกุ้งครับ!");
-        if(lr[0].resolver_type === null) throw new Error("ยังไม่ได้ยืนยันว่าใครรับความเสี่ยงส่วนต่าง!\nโปรดปิดและเปิดแท็บควบคุมบ่อใหม่เพื่อยืนยัน");
+        
+        // บล็อกไม่ให้ใส่น้ำหนักกุ้ง ถ้ายังไม่เลือกคนรับจบ!
+        if(lr[0].status === 'Open') throw new Error("กรุณารอหมดเวลา หรือ กด 'ปิดรับแทง' และยืนยันยอดส่วนต่างก่อนใส่น้ำหนักกุ้งครับ!");
+        if(lr[0].resolver_type === null) throw new Error("ยังไม่ได้ยืนยันว่าใครรับความเสี่ยงส่วนต่าง!\nโปรดเลือกผู้รับจบก่อน");
 
         const roundId = lr[0].round_id; const res = (w % 2 === 0) ? 'คู่' : 'คี่';
         const resolverType = lr[0].resolver_type;
@@ -1116,6 +1108,7 @@
         let gapAmount = Math.abs(totalEven - totalOdd); let gapSide = totalEven > totalOdd ? 'คี่' : (totalOdd > totalEven ? 'คู่' : 'none');
         let backerNotifies = [];
         
+        // ถ้าแอดมินเลือก 'backer' ระบบจะคิดเงินคนรับจบ
         if (resolverType === 'backer' && gapAmount > 0 && gapSide !== 'none') {
             const { data: backers } = await _supabase.from('users').select('*').eq('role', 'Backer');
             if (backers && backers.length > 0) {
@@ -1126,8 +1119,13 @@
                         let feeRate = (backer.backer_water_fee !== undefined && backer.backer_water_fee !== null) ? backer.backer_water_fee : 10;
                         feePaid = myGap * (feeRate / 100); pnl = myGap - feePaid; isWin = true;
                     } else { pnl = -myGap; isWin = false; }
+                    
                     let newWalletBal = (backer.backer_wallet || 0) + pnl;
-                    await _supabase.from('users').update({ backer_wallet: newWalletBal }).eq('uid', backer.uid);
+                    
+                    // ดักจับ Error ตอนอัปเดตกระเป๋า Backer
+                    const { error: updErr } = await _supabase.from('users').update({ backer_wallet: newWalletBal }).eq('uid', backer.uid);
+                    if(updErr) throw new Error(`ไม่สามารถอัปเดตเงินคนรับจบ (${backer.display_name}) ได้ โปรดตรวจสอบฐานข้อมูล: ` + updErr.message);
+
                     await _supabase.from('backer_logs').insert([{ round_id: roundId, uid: backer.uid, member_id: backer.member_id, share_percent: share, gap_amount: myGap, result_status: isWin ? 'Win' : 'Lose', pnl_amount: pnl, water_fee_deducted: feePaid, wallet_balance_after: newWalletBal }]);
                     backerNotifies.push({ uid: backer.uid, pnl: pnl, walletBalance: newWalletBal });
                 }
@@ -1141,7 +1139,10 @@
             if (bet.status === 'Win' || bet.status === 'Lose') { if (bet.status === 'Win') winCount++; continue; }
             if (bet.bet_type === res) {
               winCount++; let profit = bet.amount * (1 - margin); let payout = bet.amount + profit;
-              await _supabase.from('bets').update({ status: 'Win', payout: payout }).eq('bet_id', bet.bet_id);
+              
+              const { error: betUpdErr } = await _supabase.from('bets').update({ status: 'Win', payout: payout }).eq('bet_id', bet.bet_id);
+              if (betUpdErr) throw new Error("อัปเดตบิลล้มเหลว: " + betUpdErr.message);
+
               if (bet.play_mode === 'table') {
                   const { data: tData } = await _supabase.from('tables').select('credit').eq('table_no', bet.table_no).single();
                   if(tData) await _supabase.from('tables').update({ credit: tData.credit + payout }).eq('table_no', bet.table_no);
@@ -1170,7 +1171,7 @@
         
         alert(`ตัดผลสำเร็จ! ผลคือ: ${res} (ชนะ ${winCount} บิล)`); document.getElementById('txtShrimpWeight').value = '';
       } catch (e) { alert("เกิดข้อผิดพลาดในการตัดผล: " + e.message); } 
-      finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
+      finally { pendingFinalizeData = null; btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i> คำนวณ + ตัดผล'; fetchAdminDashboard(); if(document.getElementById('tabReport').classList.contains('active')) { generateReport(); } }
     }
 
     // ==========================================
@@ -1208,9 +1209,10 @@
           let newBal = type === 'deposit' ? t.credit + amount : t.credit - amount;
           if (newBal < 0) throw new Error("ยอดเงินในโต๊ะไม่พอให้ถอน");
           
-          await _supabase.from('tables').update({ credit: newBal }).eq('table_no', String(tId));
+          const { error: updTableErr } = await _supabase.from('tables').update({ credit: newBal }).eq('table_no', String(tId));
+          if(updTableErr) throw new Error("อัปเดตเงินโต๊ะล้มเหลว: " + updTableErr.message);
+
           await _supabase.from('transactions').insert([{ target_id: 'โต๊ะ ' + tId, type: type, amount: amount, admin_name: currentAdminName, target_type: 'table' }]);
-          
           alert(`สำเร็จ!\nโต๊ะ: ${tId}\nเครดิตคงเหลือ: ฿${newBal.toLocaleString()}`);
         } else {
           const { data: u, error: userError } = await _supabase.from('users').select('uid, credit_balance, status, total_deposit, role, backer_wallet').eq('member_id', tId).single();
@@ -1220,14 +1222,20 @@
           if (u.role === 'Backer') {
               let newBackerBal = type === 'deposit' ? (u.backer_wallet || 0) + amount : (u.backer_wallet || 0) - amount;
               if (newBackerBal < 0) throw new Error("ยอดกระเป๋าเงินคนรับจบไม่พอให้ถอน");
-              await _supabase.from('users').update({ backer_wallet: newBackerBal }).eq('uid', u.uid);
+              
+              const { error: updErr } = await _supabase.from('users').update({ backer_wallet: newBackerBal }).eq('uid', u.uid);
+              if (updErr) throw new Error("อัปเดตยอดเงินคนรับจบไม่สำเร็จ กรุณาเช็คฐานข้อมูล: " + updErr.message);
+
               notifyGAS('adminTopupComplete', { adminName: currentAdminName, type: type, targetUid: u.uid, targetMemberId: tId, amount: amount, newBalance: newBackerBal });
           } else {
               let newBal = type === 'deposit' ? u.credit_balance + amount : u.credit_balance - amount;
               if (newBal < 0) throw new Error("ยอดเครดิตลูกค้าไม่พอให้ถอน");
               let updateData = { credit_balance: newBal };
               if (type === 'deposit') updateData.total_deposit = (u.total_deposit || 0) + amount; 
-              await _supabase.from('users').update(updateData).eq('uid', u.uid);
+              
+              const { error: updErr } = await _supabase.from('users').update(updateData).eq('uid', u.uid);
+              if (updErr) throw new Error("อัปเดตเครดิตลูกค้าไม่สำเร็จ: " + updErr.message);
+
               notifyGAS('adminTopupComplete', { adminName: currentAdminName, type: type, targetUid: u.uid, targetMemberId: tId, amount: amount, newBalance: newBal });
           }
           await _supabase.from('transactions').insert([{ target_id: tId, type: type, amount: amount, admin_name: currentAdminName, target_type: 'user' }]);
@@ -1236,8 +1244,7 @@
              await _supabase.from('topup_requests').update({ status: 'Approved', admin_name: currentAdminName }).eq('id', pendingReqId);
              document.getElementById('txtPendingRequestId').value = ""; 
           }
-          
-          alert(`สำเร็จ! อัปเดตยอดและส่งแจ้งเตือนให้ลูกค้าเรียบร้อยแล้ว`);
+          alert(`สำเร็จ! อัปเดตยอดและส่งแจ้งเตือนให้เรียบร้อยแล้ว`);
         }
         
         document.getElementById('txtTargetId').value = "";
