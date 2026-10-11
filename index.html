@@ -756,8 +756,8 @@
         const res = await response.json();
         
         if(res.status === 'success') { 
-           // บันทึกลงตาราง topup_requests ใน Supabase
-           await _supabase.from('topup_requests').insert([{
+           // บันทึกลงตาราง topup_requests ใน Supabase พร้อมดักจับ Error
+           const { error: dbError } = await _supabase.from('topup_requests').insert([{
               uid: currentLineUserId,
               member_id: memberId,
               display_name: currentDisplayName,
@@ -769,11 +769,16 @@
               status: 'Pending'
            }]);
 
-           alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
-           closeTopupModal(); 
-        } else { alert("ข้อผิดพลาด: " + res.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
-      } catch (error) { alert('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง'); btnSubmit.disabled = false; btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน'; }
-    }
+           if (dbError) {
+               // ถ้าบันทึกไม่เข้า จะเด้งบอกสาเหตุที่หน้าจอทันที
+               alert("แจ้งเตือน LINE สำเร็จ แต่บันทึกลงฐานข้อมูลไม่เข้า!\nสาเหตุ: " + dbError.message);
+               btnSubmit.disabled = false; 
+               btnSubmit.innerHTML = 'ส่งแจ้งแอดมิน';
+           } else {
+               alert(`ส่งแจ้ง ${type} สำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่แอดมินแล้วครับ`); 
+               closeTopupModal(); 
+           }
+        }
 
     initializeApp();
   </script>
